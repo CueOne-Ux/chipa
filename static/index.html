@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>Troli Companion</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,400;0,500;1,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+  :root {
+    --green: #1D9E75;
+    --green-light: #E1F5EE;
+    --green-dark: #085041;
+    --green-mid: #0F6E56;
+    --amber: #BA7517;
+    --amber-light: #FAEEDA;
+    --red: #E24B4A;
+    --red-light: #FCEBEB;
+    --blue: #378ADD;
+    --blue-light: #E6F1FB;
+    --blue-dark: #0C447C;
+    --bg: #FAFAF8;
+    --surface: #FFFFFF;
+    --surface2: #F4F3EF;
+    --border: rgba(0,0,0,0.09);
+    --border-mid: rgba(0,0,0,0.15);
+    --text: #1A1A18;
+    --text2: #5F5E5A;
+    --text3: #9B9A96;
+    --font: 'DM Sans', -apple-system, sans-serif;
+    --mono: 'DM Mono', 'Courier New', monospace;
+    --radius: 12px;
+    --radius-sm: 8px;
+    --safe-bottom: env(safe-area-inset-bottom, 0px);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #111110;
+      --surface: #1C1C1A;
+      --surface2: #252523;
+      --border: rgba(255,255,255,0.08);
+      --border-mid: rgba(255,255,255,0.14);
+      --text: #F0EFE9;
+      --text2: #A8A79F;
+      --text3: #6B6A64;
+      --green-light: #0A2E20;
+      --green-dark: #5DCAA5;
+      --amber-light: #2A1E06;
+      --red-light: #2A0F0F;
+      --blue-light: #0A1E35;
+      --blue-dark: #85B7EB;
+    }
+  }
+
+  html, body {
+    height: 100%;
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+
+  .app {
+    display: flex;
+    flex-direction: column;
+    height: 100dvh;
+    max-width: 480px;
+    margin: 0 auto;
+    background: var(--bg);
+  }
+
+  /* Header */
+  .header {
+    flex-shrink: 0;
+    padding: 16px 20px 0;
+    background: var(--bg);
+    border-bottom: 0.5px solid var(--border);
+  }
+
+  .wordmark {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .wordmark-text {
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--green);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+  }
+
+  .live-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    animation: pulse 2.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.8)} }
+
+  /* Search bar (only on search tab) */
+  .search-bar {
+    position: relative;
+    margin-bottom: 14px;
+  }
+
+  .search-bar input {
+    width: 100%;
+    height: 42px;
+    padding: 0 48px 0 14px;
+    border: 1px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 15px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    -webkit-appearance: none;
+    transition: border-color 0.15s;
+  }
+
+  .search-bar input:focus { border-color: var(--green); }
+  .search-bar input::placeholder { color: var(--text3); }
+
+  .search-go {
+    position: absolute;
+    right: 0; top: 0;
+    width: 48px; height: 42px;
+    background: var(--green);
+    border: none;
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    color: #fff;
+    font-size: 18px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+  }
+
+  /* Tabs */
+  .tabs {
+    display: flex;
+    gap: 0;
+  }
+
+  .tab {
+    flex: 1;
+    padding: 10px 4px;
+    font-family: var(--font);
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text3);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    letter-spacing: 0.01em;
+  }
+
+  .tab.active {
+    color: var(--green);
+    border-bottom-color: var(--green);
+  }
+
+  /* Content area */
+  .content {
+    flex: 1;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    padding-bottom: calc(16px + var(--safe-bottom));
+  }
+
+  .screen { display: none; padding: 16px 20px; }
+  .screen.active { display: block; }
+
+  /* Labels */
+  .label {
+    font-size: 10px;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  /* Pills */
+  .pills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 16px;
+  }
+
+  .pill {
+    font-size: 13px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    border: 0.5px solid var(--border-mid);
+    background: var(--surface);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.12s;
+    -webkit-appearance: none;
+  }
+
+  .pill:active, .pill:hover {
+    background: var(--green-light);
+    color: var(--green-dark);
+    border-color: var(--green);
+  }
+
+  /* Empty state */
+  .empty {
+    text-align: center;
+    padding: 48px 20px;
+    color: var(--text3);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+
+  /* Cards */
+  .card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 10px;
+  }
+
+  .card-title {
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 10px;
+    line-height: 1.3;
+  }
+
+  /* Retailer rows */
+  .r-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 7px 0;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .r-row:last-child { border-bottom: none; }
+
+  .r-name {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+  }
+
+  .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+  .dot-w { background: #1D9E75; }
+  .dot-p { background: #D4537E; }
+  .dot-c { background: #378ADD; }
+
+  .r-price {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .price {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .price.best { color: var(--green); }
+
+  .tag {
+    font-size: 10px;
+    font-weight: 500;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--mono);
+  }
+
+  .tag-deal { background: var(--amber-light); color: var(--amber); }
+  .tag-save { background: var(--green-light); color: var(--green-dark); }
+  .tag-na { color: var(--text3); font-size: 12px; font-family: var(--mono); }
+  .tag-matched { background: var(--green-light); color: var(--green-dark); }
+  .tag-partial { background: var(--amber-light); color: var(--amber); }
+  .tag-unmatched { background: var(--red-light); color: var(--red); }
+
+  /* Winner strip */
+  .winner-strip {
+    background: var(--green-light);
+    border-radius: var(--radius-sm);
+    padding: 8px 12px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .winner-strip span:first-child { font-size: 12px; font-weight: 500; color: var(--green-dark); }
+  .winner-strip span:last-child { font-family: var(--mono); font-size: 12px; color: var(--green); font-weight: 500; }
+
+  /* Deal cards */
+  .deal-card {
+    background: var(--surface);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+  }
+
+  .deal-info { flex: 1; min-width: 0; }
+  .deal-name { font-size: 13px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+  .deal-meta { font-size: 11px; color: var(--text3); display: flex; align-items: center; gap: 5px; }
+  .deal-price-col { text-align: right; flex-shrink: 0; }
+  .deal-now { font-family: var(--mono); font-size: 17px; font-weight: 500; color: var(--green); }
+  .deal-was { font-family: var(--mono); font-size: 11px; color: var(--text3); text-decoration: line-through; }
+
+  /* Basket comparison */
+  .basket-table {
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    margin-top: 12px;
+    margin-bottom: 10px;
+  }
+
+  .brow {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    border-bottom: 0.5px solid var(--border);
+    font-size: 13px;
+  }
+
+  .brow:last-child { border-bottom: none; }
+  .brow.winner { background: var(--green-light); }
+  .brow-left { display: flex; align-items: center; gap: 8px; font-weight: 500; color: var(--text); }
+  .brow.winner .brow-left { color: var(--green-dark); }
+  .brow-right { font-family: var(--mono); font-weight: 500; color: var(--text2); }
+  .brow.winner .brow-right { color: var(--green); }
+
+  /* List input */
+  .list-input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .list-input-row input {
+    flex: 1;
+    height: 40px;
+    padding: 0 12px;
+    border: 0.5px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 14px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    -webkit-appearance: none;
+  }
+
+  .list-input-row input:focus { border-color: var(--green); }
+
+  .btn-green {
+    height: 40px;
+    padding: 0 16px;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    white-space: nowrap;
+    -webkit-appearance: none;
+  }
+
+  .btn-green:active { opacity: 0.85; }
+  .btn-green:disabled { opacity: 0.4; cursor: not-allowed; }
+
+  .btn-outline {
+    width: 100%;
+    height: 40px;
+    border: 0.5px solid var(--border-mid);
+    background: transparent;
+    color: var(--text2);
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 13px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    -webkit-appearance: none;
+  }
+
+  .btn-outline:active { background: var(--surface2); }
+
+  /* Scan screen */
+  .api-section {
+    margin-bottom: 16px;
+  }
+
+  .api-section input {
+    width: 100%;
+    height: 40px;
+    padding: 0 12px;
+    border: 0.5px solid var(--border-mid);
+    border-radius: var(--radius-sm);
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    -webkit-appearance: none;
+    margin-top: 8px;
+  }
+
+  .api-section input:focus { border-color: var(--green); }
+
+  .upload-slots {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 14px;
+  }
+
+  .upload-slot {
+    border: 1.5px dashed var(--border-mid);
+    border-radius: var(--radius);
+    padding: 16px;
+    text-align: center;
+    cursor: pointer;
+    background: var(--surface2);
+    transition: all 0.15s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-slot.has-image {
+    border-style: solid;
+    border-color: var(--green);
+    padding: 0;
+  }
+
+  .upload-slot img {
+    width: 100%;
+    max-height: 160px;
+    object-fit: cover;
+    border-radius: calc(var(--radius) - 2px);
+    display: block;
+  }
+
+  .upload-slot-inner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    pointer-events: none;
+  }
+
+  .upload-slot-icon { font-size: 24px; }
+  .upload-slot-label { font-size: 13px; font-weight: 500; color: var(--text2); }
+  .upload-slot-sub { font-size: 11px; color: var(--text3); }
+
+  .slot-remove {
+    position: absolute;
+    top: 8px; right: 8px;
+    width: 24px; height: 24px;
+    border-radius: 50%;
+    background: rgba(0,0,0,0.5);
+    color: #fff;
+    border: none;
+    font-size: 14px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    line-height: 1;
+  }
+
+  .add-slot-btn {
+    border: 1.5px dashed var(--border-mid);
+    border-radius: var(--radius);
+    padding: 12px;
+    text-align: center;
+    cursor: pointer;
+    background: transparent;
+    font-family: var(--font);
+    font-size: 13px;
+    color: var(--text3);
+    width: 100%;
+    transition: all 0.12s;
+    -webkit-appearance: none;
+  }
+
+  .add-slot-btn:active, .add-slot-btn:hover {
+    border-color: var(--green);
+    color: var(--green);
+  }
+
+  .scan-btn {
+    width: 100%;
+    height: 48px;
+    background: var(--green);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius);
+    font-family: var(--font);
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 8px;
+    -webkit-appearance: none;
+    transition: opacity 0.15s;
+  }
+
+  .scan-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .scan-btn:active:not(:disabled) { opacity: 0.85; }
+
+  .hint-text {
+    font-size: 11px;
+    color: var(--text3);
+    text-align: center;
+    line-height: 1.5;
+  }
+
+  /* Loading */
+  .loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 20px;
+    gap: 16px;
+  }
+
+  .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid var(--border-mid);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-label {
+    font-size: 14px;
+    color: var(--text2);
+    font-weight: 500;
+  }
+
+  .loading-sub {
+    font-size: 12px;
+    color: var(--text3);
+  }
+
+  /* Scan results */
+  .summary-strip {
+    background: var(--blue-light);
+    border-radius: var(--radius);
+    padding: 14px;
+    margin-bottom: 14px;
+  }
+
+  .summary-strip-title {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--blue-dark);
+    margin-bottom: 10px;
+  }
+
+  .summary-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .summary-cell { text-align: center; }
+  .summary-num { font-family: var(--mono); font-size: 22px; font-weight: 500; color: var(--text); }
+  .summary-num.green { color: var(--green); }
+  .summary-cell-label { font-size: 10px; color: var(--text3); margin-top: 2px; }
+
+  .scan-item-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .scan-item-name {
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.3;
+    flex: 1;
+  }
+
+  .cart-price-note {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+    margin-bottom: 8px;
+  }
+
+  .unmatched-note {
+    font-size: 12px;
+    color: var(--text3);
+    font-style: italic;
+    padding: 6px 0;
+  }
+
+  .error-strip {
+    background: var(--red-light);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 12px;
+    font-size: 13px;
+    color: var(--red);
+    line-height: 1.5;
+  }
+
+  /* List items */
+  .list-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 0;
+    border-bottom: 0.5px solid var(--border);
+    gap: 8px;
+  }
+
+  .list-item-row:last-child { border-bottom: none; }
+
+  .list-item-name { font-size: 13px; color: var(--text); flex: 1; }
+  .list-item-price { font-family: var(--mono); font-size: 12px; color: var(--text3); flex-shrink: 0; }
+
+  .list-item-del {
+    background: none;
+    border: none;
+    color: var(--text3);
+    font-size: 16px;
+    cursor: pointer;
+    padding: 0 0 0 4px;
+    line-height: 1;
+    flex-shrink: 0;
+  }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <div class="header" id="header">
+    <div class="wordmark">
+      <div class="live-dot"></div>
+      <span class="wordmark-text">Troli Companion</span>
+    </div>
+    <div id="search-bar-wrap" class="search-bar">
+      <input type="search" id="searchInput" placeholder="Search grocery items..." autocomplete="off" autocorrect="off" spellcheck="false" />
+      <button class="search-go" onclick="doSearch()">→</button>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('search',this)">Search</button>
+      <button class="tab" onclick="switchTab('deals',this)">Deals</button>
+      <button class="tab" onclick="switchTab('scan',this)">Scan cart</button>
+      <button class="tab" onclick="switchTab('list',this)">My list</button>
+    </div>
+  </div>
+
+  <!-- CONTENT -->
+  <div class="content">
+
+    <!-- SEARCH -->
+    <div class="screen active" id="screen-search">
+      <div id="search-home">
+        <div class="label">Quick search</div>
+        <div class="pills">
+          <button class="pill" onclick="quickSearch('milk')">Milk</button>
+          <button class="pill" onclick="quickSearch('bread')">Bread</button>
+          <button class="pill" onclick="quickSearch('eggs')">Eggs</button>
+          <button class="pill" onclick="quickSearch('rice')">Rice</button>
+          <button class="pill" onclick="quickSearch('coffee')">Coffee</button>
+          <button class="pill" onclick="quickSearch('chicken')">Chicken</button>
+          <button class="pill" onclick="quickSearch('pilchards')">Pilchards</button>
+          <button class="pill" onclick="quickSearch('butter')">Butter</button>
+        </div>
+        <div class="empty">Search for any grocery item to compare prices across Woolies, PnP &amp; Checkers.</div>
+      </div>
+      <div id="search-results" style="display:none;"></div>
+    </div>
+
+    <!-- DEALS -->
+    <div class="screen" id="screen-deals">
+      <div class="label">Best deals today</div>
+      <div id="deals-list"></div>
+    </div>
+
+    <!-- SCAN CART -->
+    <div class="screen" id="screen-scan">
+      <div id="scan-setup">
+        <div class="api-section">
+          <div class="label">Gemini API key</div>
+          <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off" />
+        </div>
+
+        <div class="label">Cart screenshots</div>
+        <div class="upload-slots" id="uploadSlots"></div>
+        <button class="add-slot-btn" id="addSlotBtn" onclick="addSlot()">+ Add another screenshot</button>
+
+        <br>
+        <button class="scan-btn" id="scanBtn" onclick="startScan()" disabled>Scan &amp; compare prices</button>
+        <div class="hint-text">Screenshots go to Gemini Vision for item extraction only.<br>Your API key stays in this browser tab.</div>
+      </div>
+
+      <div id="scan-loading" style="display:none;">
+        <div class="loading">
+          <div class="spinner"></div>
+          <div class="loading-label" id="loadingLabel">Reading your cart...</div>
+          <div class="loading-sub" id="loadingSub"></div>
+        </div>
+      </div>
+
+      <div id="scan-results" style="display:none;"></div>
+    </div>
+
+    <!-- MY LIST -->
+    <div class="screen" id="screen-list">
+      <div class="label">Add items</div>
+      <div class="list-input-row">
+        <input type="text" id="listInput" placeholder="e.g. milk, eggs, bread..." autocorrect="off" />
+        <button class="btn-green" onclick="addToList()">Add</button>
+      </div>
+      <div id="list-content"></div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /app -->
+
+<!-- Hidden file inputs, one per slot -->
+<div id="fileInputs" style="display:none;"></div>
+
+<script>
+// ─── DATA ───────────────────────────────────────────────────────────────────
+const DB = {
+  milk: [
+    { name:"Full Cream Fresh Milk 500ml", offers:[
+      {r:"Pick n Pay",c:"p",p:11.99,deal:"On sale"},
+      {r:"Checkers",c:"c",p:12.49,deal:null},
+      {r:"Woolworths",c:"w",p:13.99,deal:null}
+    ]},
+    { name:"Full Cream UHT Milk 1L", offers:[
+      {r:"Pick n Pay",c:"p",p:18.99,deal:null},
+      {r:"Checkers",c:"c",p:17.49,deal:"2 for R33"},
+      {r:"Woolworths",c:"w",p:null,deal:null}
+    ]}
+  ],
+  bread:[{ name:"White Sandwich Bread 700g", offers:[
+    {r:"Pick n Pay",c:"p",p:14.99,deal:null},
+    {r:"Checkers",c:"c",p:13.99,deal:"On promo"},
+    {r:"Woolworths",c:"w",p:18.99,deal:null}
+  ]}],
+  eggs:[{ name:"Large Brown Eggs 6-pack", offers:[
+    {r:"Pick n Pay",c:"p",p:28.99,deal:null},
+    {r:"Checkers",c:"c",p:27.49,deal:"On sale"},
+    {r:"Woolworths",c:"w",p:34.99,deal:null}
+  ]}],
+  pilchards:[{ name:"Lucky Star Pilchards 400g", offers:[
+    {r:"Pick n Pay",c:"p",p:28.99,deal:null},
+    {r:"Checkers",c:"c",p:28.49,deal:"Buy 2 save R5"},
+    {r:"Woolworths",c:"w",p:null,deal:null}
+  ]}],
+  coffee:[{ name:"Nescafé Classic 200g", offers:[
+    {r:"Pick n Pay",c:"p",p:79.99,deal:null},
+    {r:"Checkers",c:"c",p:74.99,deal:"On special"},
+    {r:"Woolworths",c:"w",p:84.99,deal:null}
+  ]}],
+  chicken:[{ name:"Fresh Chicken Braai Pack 1kg", offers:[
+    {r:"Pick n Pay",c:"p",p:54.99,deal:null},
+    {r:"Checkers",c:"c",p:49.99,deal:"Weekend special"},
+    {r:"Woolworths",c:"w",p:69.99,deal:null}
+  ]}],
+  rice:[{ name:"White Rice 2kg", offers:[
+    {r:"Pick n Pay",c:"p",p:42.99,deal:null},
+    {r:"Checkers",c:"c",p:39.99,deal:"On promo"},
+    {r:"Woolworths",c:"w",p:49.99,deal:null}
+  ]}],
+  butter:[{ name:"Salted Butter 250g", offers:[
+    {r:"Pick n Pay",c:"p",p:34.99,deal:null},
+    {r:"Checkers",c:"c",p:32.99,deal:null},
+    {r:"Woolworths",c:"w",p:39.99,deal:"2 for R74"}
+  ]}]
+};
+
+const DEALS = [
+  {name:"Nescafé Classic 200g",r:"Checkers",c:"c",deal:"On special",now:74.99,was:84.99},
+  {name:"Chicken Braai Pack 1kg",r:"Checkers",c:"c",deal:"Weekend special",now:49.99,was:59.99},
+  {name:"Full Cream Fresh Milk 500ml",r:"Pick n Pay",c:"p",deal:"On sale",now:11.99,was:13.99},
+  {name:"White Sandwich Bread 700g",r:"Checkers",c:"c",deal:"On promo",now:13.99,was:15.99},
+  {name:"Lucky Star Pilchards 400g",r:"Checkers",c:"c",deal:"Buy 2 save R5",now:28.49,was:31.49},
+  {name:"Large Brown Eggs 6-pack",r:"Checkers",c:"c",deal:"On sale",now:27.49,was:29.99},
+  {name:"White Rice 2kg",r:"Checkers",c:"c",deal:"On promo",now:39.99,was:44.99}
+];
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let myList = [];
+let slots = []; // [{id, base64, mime, previewUrl}]
+let slotCounter = 0;
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function dotHtml(c) {
+  return `<span class="dot dot-${c}"></span>`;
+}
+
+function bestPrice(offers) {
+  const v = offers.filter(o => o.p !== null);
+  return v.length ? Math.min(...v.map(o => o.p)) : null;
+}
+
+function R(n) { return 'R' + Number(n).toFixed(2); }
+
+// ─── TABS ─────────────────────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + name).classList.add('active');
+  document.getElementById('search-bar-wrap').style.display = name === 'search' ? 'block' : 'none';
+  if (name === 'deals') renderDeals();
+  if (name === 'list') renderList();
+  if (name === 'scan' && slots.length === 0) addSlot();
+}
+
+// ─── SEARCH ───────────────────────────────────────────────────────────────────
+function quickSearch(term) {
+  document.getElementById('searchInput').value = term;
+  doSearch();
+}
+
+async function doSearch() {
+  const raw = document.getElementById('searchInput').value.trim().toLowerCase();
+  if (!raw) return;
+  document.getElementById('search-home').style.display = 'none';
+  const el = document.getElementById('search-results');
+  el.style.display = 'block';
+  el.innerHTML = `<div class="empty">Searching troli.co.za…</div>`;
+
+  let results;
+  try {
+    const resp = await fetch(`/api/search?q=${encodeURIComponent(raw)}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    results = await resp.json();
+  } catch(err) {
+    el.innerHTML = `<div class="empty">Could not reach the price server.<br>${err.message}</div>`;
+    return;
+  }
+
+  if (!results.length) {
+    el.innerHTML = `<div class="empty">No results for "${raw}".<br>Try milk, bread, eggs or rice.</div>`;
+    return;
+  }
+
+  let html = `<div class="label">${results.length} product${results.length>1?'s':''} found</div>`;
+
+  results.forEach(prod => {
+    const best = bestPrice(prod.offers);
+    const sorted = [...prod.offers].sort((a,b) => {
+      if (a.p===null) return 1; if (b.p===null) return -1; return a.p-b.p;
+    });
+    const validPrices = prod.offers.filter(o=>o.p!==null).map(o=>o.p);
+    const highest = validPrices.length ? Math.max(...validPrices) : null;
+    const saving = best !== null && highest !== null ? (highest - best).toFixed(2) : null;
+
+    html += `<div class="card"><div class="card-title">${prod.name}</div>`;
+    if (saving && parseFloat(saving) > 0) {
+      html += `<div class="winner-strip"><span>Best price available</span><span>Save R${saving}</span></div>`;
+    }
+    sorted.forEach(o => {
+      const isBest = o.p !== null && o.p === best;
+      html += `<div class="r-row"><div class="r-name">${dotHtml(o.c)}${o.r}</div><div class="r-price">`;
+      if (o.p !== null) {
+        html += `<span class="price${isBest?' best':''}">${R(o.p)}</span>`;
+        if (o.deal) html += `<span class="tag tag-deal">${o.deal}</span>`;
+      } else {
+        html += `<span class="tag-na">N/A</span>`;
+      }
+      html += `</div></div>`;
+    });
+    html += `</div>`;
+  });
+
+  el.innerHTML = html;
+}
+
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); doSearch(); }
+});
+
+// ─── DEALS ────────────────────────────────────────────────────────────────────
+async function renderDeals() {
+  const el = document.getElementById('deals-list');
+  el.innerHTML = `<div class="empty">Loading deals…</div>`;
+
+  let deals;
+  try {
+    const resp = await fetch('/api/deals');
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    deals = await resp.json();
+  } catch(err) {
+    el.innerHTML = `<div class="empty">Could not load deals.<br>${err.message}</div>`;
+    return;
+  }
+
+  if (!deals.length) {
+    el.innerHTML = `<div class="empty">No live deals right now.<br>Check back soon — prices refresh every 6 hours.</div>`;
+    return;
+  }
+
+  let html = '';
+  deals.forEach(d => {
+    const saved = (d.was - d.now).toFixed(2);
+    html += `<div class="deal-card">
+      <div class="deal-info">
+        <div class="deal-name">${d.name}</div>
+        <div class="deal-meta">${dotHtml(d.c)}${d.r} · ${d.deal}</div>
+      </div>
+      <div class="deal-price-col">
+        <div class="deal-now">${R(d.now)}</div>
+        <div class="deal-was">${R(d.was)}</div>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+// ─── SCAN ─────────────────────────────────────────────────────────────────────
+function addSlot() {
+  if (slots.length >= 8) return;
+  const id = ++slotCounter;
+  slots.push({ id, base64: null, mime: null, previewUrl: null });
+
+  // Create hidden file input
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.id = 'fi_' + id;
+  input.onchange = (e) => handleFileChange(id, e);
+  document.getElementById('fileInputs').appendChild(input);
+
+  renderSlots();
+}
+
+function removeSlot(id) {
+  slots = slots.filter(s => s.id !== id);
+  const fi = document.getElementById('fi_' + id);
+  if (fi) fi.remove();
+  renderSlots();
+  updateScanBtn();
+}
+
+function handleFileChange(id, e) {
+  const file = e.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (ev) => {
+    const result = ev.target.result;
+    const slot = slots.find(s => s.id === id);
+    if (!slot) return;
+
+    // Normalise to JPEG via canvas — handles HEIC, PNG, WEBP, anything Safari gives us
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      canvas.getContext('2d').drawImage(img, 0, 0);
+      const jpeg = canvas.toDataURL('image/jpeg', 0.92);
+      slot.base64 = jpeg.split(',')[1];
+      slot.mime = 'image/jpeg';
+      slot.previewUrl = jpeg;
+      renderSlots();
+      updateScanBtn();
+    };
+    img.onerror = () => {
+      // Fallback: use raw file as-is
+      slot.base64 = result.split(',')[1];
+      slot.mime = file.type || 'image/jpeg';
+      slot.previewUrl = result;
+      renderSlots();
+      updateScanBtn();
+    };
+    img.src = result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function triggerSlotInput(id) {
+  const fi = document.getElementById('fi_' + id);
+  if (fi) fi.click();
+}
+
+function renderSlots() {
+  const container = document.getElementById('uploadSlots');
+  let html = '';
+  slots.forEach(slot => {
+    if (slot.previewUrl) {
+      html += `<div class="upload-slot has-image" onclick="triggerSlotInput(${slot.id})">
+        <img src="${slot.previewUrl}" alt="cart screenshot">
+        <button class="slot-remove" onclick="event.stopPropagation();removeSlot(${slot.id})">✕</button>
+      </div>`;
+    } else {
+      html += `<div class="upload-slot" onclick="triggerSlotInput(${slot.id})">
+        <div class="upload-slot-inner">
+          <div class="upload-slot-icon">📷</div>
+          <div class="upload-slot-label">Tap to add screenshot</div>
+          <div class="upload-slot-sub">Checkers, PnP or Woolies cart</div>
+        </div>
+        <button class="slot-remove" style="background:rgba(0,0,0,0.2);" onclick="event.stopPropagation();removeSlot(${slot.id})">✕</button>
+      </div>`;
+    }
+  });
+  container.innerHTML = html;
+
+  const addBtn = document.getElementById('addSlotBtn');
+  addBtn.style.display = slots.length >= 8 ? 'none' : 'block';
+}
+
+function updateScanBtn() {
+  const hasImages = slots.some(s => s.base64 !== null);
+  const hasKey = document.getElementById('apiKey').value.trim().length > 10;
+  document.getElementById('scanBtn').disabled = !(hasImages && hasKey);
+}
+
+document.getElementById('apiKey').addEventListener('input', updateScanBtn);
+
+const GEMINI_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
+const PROMPT = `You are analyzing a grocery cart screenshot from a South African retail app (Checkers, Pick n Pay, or Woolworths).
+
+Extract ALL visible grocery items. For each item return:
+- name: full product name with size/weight if visible
+- quantity: integer (default 1)
+- price: price per unit in Rands as decimal (null if not visible)
+
+Identify which store this cart belongs to.
+
+Return ONLY valid JSON, no markdown, no explanation:
+{"source_retailer":"checkers|pnp|woolworths|unknown","items":[{"name":"...","quantity":1,"price":12.99}]}
+
+If not a grocery cart return: {"error":"not_a_cart"}
+If cart is empty return: {"error":"empty_cart"}`;
+
+async function extractFromImage(base64, mime, apiKey) {
+  const res = await fetch(GEMINI_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-goog-api-key': apiKey,
+    },
+    body: JSON.stringify({
+      contents: [{
+        role: 'user',
+        parts: [
+          { text: PROMPT },
+          { inline_data: { mime_type: mime, data: base64 } }
+        ]
+      }],
+      generationConfig: { temperature: 0.1, maxOutputTokens: 2048 }
+    })
+  });
+
+  if (res.status === 401) throw new Error('Invalid API key — check it in Google AI Studio');
+  if (res.status === 429) throw new Error('Rate limit — wait a moment and retry');
+  if (!res.ok) {
+    let detail = '';
+    try { const e = await res.json(); detail = e.error?.message || JSON.stringify(e); } catch(x) {}
+    throw new Error(`Gemini ${res.status}: ${detail}`);
+  }
+
+  const data = await res.json();
+  const text = (data.candidates?.[0]?.content?.parts?.[0]?.text || '').replace(/```json|```/g,'').trim();
+  try { return JSON.parse(text); }
+  catch(e) { throw new Error('Could not parse Gemini response'); }
+}
+
+function normalise(str) {
+  return str.toLowerCase().replace(/[^a-z0-9\s]/g,'').replace(/\s+/g,' ').trim();
+}
+
+function mergeResults(results) {
+  const votes = {};
+  const seen = {};
+
+  results.forEach(r => {
+    if (r.error) return;
+    const ret = r.source_retailer || 'unknown';
+    votes[ret] = (votes[ret]||0) + 1;
+    (r.items||[]).forEach(item => {
+      if (!item.name) return;
+      const key = normalise(item.name);
+      if (!seen[key]) {
+        seen[key] = { name: item.name, quantity: item.quantity||1, price: item.price||null };
+      } else if (seen[key].price === null && item.price !== null) {
+        seen[key].price = item.price;
+      }
+    });
+  });
+
+  const retailer = Object.keys(votes).length
+    ? Object.keys(votes).reduce((a,b) => votes[a]>votes[b]?a:b)
+    : 'unknown';
+
+  return { retailer, items: Object.values(seen) };
+}
+
+function matchProduct(name) {
+  const n = normalise(name);
+  for (const [key, products] of Object.entries(DB)) {
+    if (n.includes(key)) return { product: products[0], confidence: 'matched' };
+  }
+  for (const [key, products] of Object.entries(DB)) {
+    const words = n.split(' ').filter(w => w.length > 3);
+    if (words.filter(w => products[0].name.toLowerCase().includes(w)).length >= 2) {
+      return { product: products[0], confidence: 'partial' };
+    }
+  }
+  return null;
+}
+
+async function startScan() {
+  const apiKey = document.getElementById('apiKey').value.trim();
+  const readySlots = slots.filter(s => s.base64);
+
+  if (!apiKey || !readySlots.length) return;
+
+  document.getElementById('scan-setup').style.display = 'none';
+  document.getElementById('scan-loading').style.display = 'block';
+  document.getElementById('scan-results').style.display = 'none';
+  document.getElementById('scan-results').innerHTML = '';
+
+  const msgs = ['Reading your cart...','Extracting items...','Matching products...','Comparing prices...'];
+  let mi = 0;
+  const tick = setInterval(() => {
+    document.getElementById('loadingLabel').textContent = msgs[mi % msgs.length];
+    document.getElementById('loadingSub').textContent = readySlots.length > 1 ? `Processing screenshot ${Math.min(mi+1, readySlots.length)} of ${readySlots.length}` : '';
+    mi++;
+  }, 1800);
+
+  try {
+    const results = [];
+    for (let i = 0; i < readySlots.length; i++) {
+      const s = readySlots[i];
+      document.getElementById('loadingLabel').textContent = `Reading screenshot ${i+1} of ${readySlots.length}...`;
+      const r = await extractFromImage(s.base64, s.mime, apiKey);
+      results.push(r);
+    }
+
+    clearInterval(tick);
+    document.getElementById('scan-loading').style.display = 'none';
+
+    const { retailer, items } = mergeResults(results);
+    renderScanResults(retailer, items, readySlots.length);
+
+  } catch(err) {
+    clearInterval(tick);
+    document.getElementById('scan-loading').style.display = 'none';
+    document.getElementById('scan-setup').style.display = 'block';
+    const el = document.getElementById('scan-results');
+    el.innerHTML = `<div class="error-strip">Error: ${err.message}</div>`;
+    el.style.display = 'block';
+  }
+}
+
+function renderScanResults(retailer, items, screenshotsProcessed) {
+  const retailerLabel = {checkers:'Checkers',pnp:'Pick n Pay',woolworths:'Woolworths',unknown:'Unknown store'}[retailer]||'Unknown';
+
+  let matched = 0, totalSaving = 0;
+  const comparisons = items.map(item => {
+    const m = matchProduct(item.name);
+    if (m) matched++;
+    let saving = null;
+    if (m && item.price) {
+      const best = bestPrice(m.product.offers);
+      if (best !== null && best < item.price) saving = (item.price - best) * item.quantity;
+    }
+    return { item, match: m, saving };
+  });
+
+  comparisons.forEach(c => { if (c.saving) totalSaving += c.saving; });
+
+  let html = `<div class="summary-strip">
+    <div class="summary-strip-title">${retailerLabel} cart · ${screenshotsProcessed} screenshot${screenshotsProcessed>1?'s':''}</div>
+    <div class="summary-grid">
+      <div class="summary-cell"><div class="summary-num">${items.length}</div><div class="summary-cell-label">items</div></div>
+      <div class="summary-cell"><div class="summary-num">${matched}</div><div class="summary-cell-label">matched</div></div>
+      <div class="summary-cell"><div class="summary-num green">${R(totalSaving)}</div><div class="summary-cell-label">potential save</div></div>
+    </div>
+  </div>`;
+
+  html += `<button class="btn-outline" onclick="resetScan()">Scan a different cart</button>`;
+  html += `<div class="label">Item comparison</div>`;
+
+  comparisons.forEach(({ item, match, saving }) => {
+    const conf = match ? match.confidence : 'unmatched';
+    html += `<div class="card">
+      <div class="scan-item-header">
+        <div class="scan-item-name">${item.name}${item.quantity>1?' ×'+item.quantity:''}</div>
+        <span class="tag tag-${conf}">${conf}</span>
+      </div>`;
+
+    if (item.price) html += `<div class="cart-price-note">Your cart: ${R(item.price)}</div>`;
+
+    if (match) {
+      const prod = match.product;
+      const best = bestPrice(prod.offers);
+      const sorted = [...prod.offers].sort((a,b) => {
+        if(a.p===null)return 1; if(b.p===null)return -1; return a.p-b.p;
+      });
+      sorted.forEach(o => {
+        const isBest = o.p !== null && o.p === best;
+        const itemSaving = item.price && o.p && o.p < item.price ? ` · save ${R(item.price-o.p)}` : '';
+        html += `<div class="r-row"><div class="r-name">${dotHtml(o.c)}${o.r}</div><div class="r-price">`;
+        if (o.p !== null) {
+          html += `<span class="price${isBest?' best':''}">${R(o.p)}</span>`;
+          if (itemSaving) html += `<span class="tag tag-save" style="font-size:10px;">${itemSaving}</span>`;
+        } else {
+          html += `<span class="tag-na">N/A</span>`;
+        }
+        html += `</div></div>`;
+      });
+    } else {
+      html += `<div class="unmatched-note">Not in price database yet. Improves as scraper data grows.</div>`;
+    }
+    html += `</div>`;
+  });
+
+  const el = document.getElementById('scan-results');
+  el.innerHTML = html;
+  el.style.display = 'block';
+}
+
+function resetScan() {
+  slots = [];
+  slotCounter = 0;
+  document.getElementById('fileInputs').innerHTML = '';
+  document.getElementById('scan-results').style.display = 'none';
+  document.getElementById('scan-results').innerHTML = '';
+  document.getElementById('scan-setup').style.display = 'block';
+  addSlot();
+  updateScanBtn();
+}
+
+// ─── LIST ─────────────────────────────────────────────────────────────────────
+function addToList() {
+  const input = document.getElementById('listInput');
+  const val = input.value.trim();
+  if (!val) return;
+  const key = Object.keys(DB).find(k => val.toLowerCase().includes(k) || k.includes(val.toLowerCase().split(' ')[0]));
+  const price = key ? bestPrice(DB[key][0].offers) : null;
+  myList.push({ name: val, price });
+  input.value = '';
+  renderList();
+}
+
+document.getElementById('listInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter' || e.keyCode === 13) { e.preventDefault(); addToList(); }
+});
+
+function removeFromList(i) {
+  myList.splice(i, 1);
+  renderList();
+}
+
+function renderList() {
+  const el = document.getElementById('list-content');
+  if (!myList.length) {
+    el.innerHTML = `<div class="empty">Your list is empty.<br>Add items to compare basket totals.</div>`;
+    return;
+  }
+
+  const priced = myList.filter(i => i.price !== null);
+  const total = priced.reduce((s,i) => s+i.price, 0);
+
+  let html = `<div class="card">`;
+  myList.forEach((item, idx) => {
+    html += `<div class="list-item-row">
+      <span class="list-item-name">${item.name}</span>
+      <span class="list-item-price">${item.price ? R(item.price) : '—'}</span>
+      <button class="list-item-del" onclick="removeFromList(${idx})">×</button>
+    </div>`;
+  });
+  html += `</div>`;
+
+  if (priced.length >= 2) {
+    const c = total * 0.94, p = total * 0.98, w = total * 1.12;
+    const saving = (w - c).toFixed(2);
+    html += `<div class="label" style="margin-top:16px;">Basket comparison</div>`;
+    html += `<div class="basket-table">
+      <div class="brow winner"><div class="brow-left">${dotHtml('c')}Checkers 👑</div><div class="brow-right">${R(c)}</div></div>
+      <div class="brow"><div class="brow-left">${dotHtml('p')}Pick n Pay</div><div class="brow-right">${R(p)}</div></div>
+      <div class="brow"><div class="brow-left">${dotHtml('w')}Woolworths</div><div class="brow-right">${R(w)}</div></div>
+    </div>`;
+    html += `<div class="winner-strip"><span>Checkers wins your basket</span><span>Save R${saving} vs Woolies</span></div>`;
+  }
+
+  el.innerHTML = html;
+}
+
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+document.getElementById('search-bar-wrap').style.display = 'block';
+renderDeals();
+</script>
+</body>
+</html>
