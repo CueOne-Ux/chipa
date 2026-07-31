@@ -318,3 +318,10 @@ def test_frontend_served(client):
     res = client.get("/")
     assert res.status_code == 200
     assert "Chipa" in res.text
+
+
+def test_product_image_asset_served(client):
+    res = client.get("/assets/products/broccoli.webp")
+    assert res.status_code == 200
+    assert res.headers["content-type"] == "image/webp"
+    assert len(res.content) > 1_000

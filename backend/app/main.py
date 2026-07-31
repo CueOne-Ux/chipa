@@ -31,6 +31,7 @@ from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
 from starlette.concurrency import run_in_threadpool
+from starlette.staticfiles import StaticFiles
 
 from . import basket as basket_engine
 from . import db, ocr, sync
@@ -44,7 +45,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-FRONTEND = Path(__file__).resolve().parents[2] / "frontend" / "index.html"
+FRONTEND_DIR = Path(__file__).resolve().parents[2] / "frontend"
+FRONTEND = FRONTEND_DIR / "index.html"
 
 
 @asynccontextmanager
@@ -76,6 +78,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="Chipa API", version="2.0.0", lifespan=lifespan)
+
+app.mount("/assets", StaticFiles(directory=FRONTEND_DIR / "assets"), name="assets")
 
 app.add_middleware(
     CORSMiddleware,
