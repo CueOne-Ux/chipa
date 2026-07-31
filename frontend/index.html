@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#0B0B0F">
-<title>Chipa — cross-store grocery prices</title>
+<title>Chipa - cross-store grocery prices</title>
 <link rel="manifest" href="data:application/json,{%22name%22:%22Chipa%22,%22short_name%22:%22Chipa%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22%230B0B0F%22,%22theme_color%22:%22%230B0B0F%22}">
 <style>
   :root{
@@ -66,6 +66,10 @@
   .btn:disabled{opacity:.5;cursor:not-allowed}
   .btn.ghost{background:var(--surface);border:1px solid var(--line);color:var(--text)}
   .btn.sm{padding:8px 13px;font-size:13px;border-radius:var(--r-sm)}
+  .btn:active,.loc-btn:active,.tab:active{transform:translateY(1px)}
+  button:focus-visible,input:focus-visible{
+    outline:2px solid var(--accent);outline-offset:2px;
+  }
 
   .filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
   .chip{
@@ -174,6 +178,54 @@
   }
   .dots i.on{width:15px;background:var(--accent)}
 
+  /* ── Home discovery ────────────────────────────────────── */
+  .home-discovery{
+    margin:24px -16px 0;padding:22px 16px 18px;
+    border-top:1px solid rgba(255,107,44,.28);
+    background:linear-gradient(180deg,rgba(255,107,44,.10),rgba(255,107,44,0) 72%);
+  }
+  .home-discovery-head{
+    display:flex;align-items:flex-end;justify-content:space-between;gap:16px;
+    margin-bottom:2px;
+  }
+  .home-kicker{
+    color:var(--accent);font-size:11px;font-weight:800;letter-spacing:.12em;
+    text-transform:uppercase;margin-bottom:6px;
+  }
+  .home-discovery h2{font-size:24px;margin:0;line-height:1.1}
+  .home-discovery-copy{
+    color:var(--muted);font-size:13.5px;line-height:1.45;margin-top:7px;max-width:46ch;
+  }
+  .text-action{
+    flex:none;background:none;border:0;border-bottom:1px solid var(--accent);
+    color:var(--text);padding:4px 0;font-size:13px;font-weight:750;cursor:pointer;
+  }
+  .home-specials .carousel-head:first-child{margin-top:18px}
+  .home-specials .scard{
+    flex-basis:226px;min-height:212px;padding:13px;text-align:left;color:var(--text);
+    font:inherit;cursor:pointer;box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);
+    transition:transform .2s ease,background .2s ease;
+  }
+  .home-specials .scard:hover{background:var(--surface-2);transform:translateY(-2px)}
+  .home-specials .scard:active{transform:scale(.985)}
+  .home-specials .scard .simg{height:112px}
+  .simg.no-photo{
+    display:flex;align-items:flex-end;padding:11px;
+    background:linear-gradient(145deg,
+      color-mix(in srgb,var(--store-color) 24%,var(--surface-2)),var(--surface-2));
+    border:1px solid color-mix(in srgb,var(--store-color) 46%,var(--line));
+  }
+  .simg.no-photo span{
+    color:var(--text);font-size:11px;font-weight:800;letter-spacing:.08em;
+    text-transform:uppercase;
+  }
+  .specials-empty{
+    margin-top:16px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--r);padding:18px;
+  }
+  .specials-empty strong{display:block;font-size:15px;margin-bottom:5px}
+  .specials-empty p{color:var(--muted);font-size:13px;line-height:1.5;margin-bottom:13px}
+
   h2{font-size:19px;font-weight:750;margin:18px 0 11px;letter-spacing:-.02em}
   .empty{text-align:center;color:var(--muted);padding:44px 20px;font-size:14px;line-height:1.6}
   .spinner{
@@ -195,6 +247,15 @@
     opacity:0;transition:opacity .25s;pointer-events:none;
   }
   .toast.show{opacity:1}
+  @media (max-width:560px){
+    .home-discovery-head{align-items:flex-start}
+    .home-discovery h2{font-size:22px}
+    .home-specials .scard{flex-basis:min(74vw,240px)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important}
+    .home-specials .scard{transition:none}
+  }
 </style>
 </head>
 <body>
@@ -222,6 +283,18 @@
     </div>
     <div class="filters" id="storeFilters"></div>
     <div id="searchOut"></div>
+
+    <section class="home-discovery" aria-labelledby="homeSpecialsTitle">
+      <div class="home-discovery-head">
+        <div>
+          <div class="home-kicker">Featured specials</div>
+          <h2 id="homeSpecialsTitle">This week's best buys</h2>
+          <p class="home-discovery-copy">Five current specials from each shop. Swipe to browse, then tap any item to compare it.</p>
+        </div>
+        <button class="text-action" onclick="show('deals')">Browse deals</button>
+      </div>
+      <div id="homeSpecialsOut" class="home-specials" aria-live="polite"></div>
+    </section>
   </section>
 
   <!-- ── BASKET ──────────────────────────────────────────── -->
@@ -244,7 +317,7 @@
   <section id="view-upload" class="hide">
     <h2>Upload a specials catalogue</h2>
     <p class="note" style="margin-bottom:14px">
-      Some shops — Food Lover's Market, Boxer, independent SPARs — publish specials
+      Some shops, including Food Lover's Market, Boxer and independent SPARs, publish specials
       only as a PDF leaflet, with no online store to compare against. Upload one here
       and Chipa reads the prices off it, including flattened graphics, then prices
       them against the shops it already tracks.
@@ -305,7 +378,7 @@
 
 <script>
 /* ══════════════════════════════════════════════════════════
-   CONFIG — set this before uploading to shared hosting.
+   CONFIG - set this before uploading to shared hosting.
 
    Leave as '' when the API serves this file itself (Render).
    Set to the full API origin when hosting this file separately
@@ -335,7 +408,12 @@ function show(view){
     document.getElementById('view-'+v).classList.toggle('hide', v!==view);
   });
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.view===view));
-  if(view==='deals'){ loadSpecials(); loadDeals(); } else { stopLoops(); }
+  stopLoops();
+  if(view==='search') loadSpecials('homeSpecialsOut','home','view-search');
+  if(view==='deals'){
+    loadSpecials('specialsOut','deals','view-deals');
+    loadDeals();
+  }
   if(view==='upload') loadUploads();
 }
 
@@ -343,7 +421,7 @@ function show(view){
    Deliberately NOT requested on launch. A cold permission
    prompt before the app has shown any value reads as a grab.
    We ask only when the shopper opts in, and everything works
-   without it — distances simply aren't factored in.        */
+   without it. Distances simply aren't factored in.         */
 function askLocation(){
   if(!navigator.geolocation){ toast('Location not supported on this device'); return; }
   toast('Finding your area…');
@@ -355,7 +433,7 @@ function askLocation(){
       document.getElementById('locLabel').textContent = 'Area set';
       toast('Petrol costs now included in comparisons');
     },
-    ()=>toast('No problem — prices still work without it'),
+    ()=>toast('No problem. Prices still work without it'),
     {timeout:8000}
   );
 }
@@ -371,7 +449,7 @@ async function checkApi(){
     const data = await res.json();
     API_UP = true;
     if(!data.database) showBanner(
-      'Backend is up but has no database connected yet — prices will be empty.');
+      'Backend is up but has no database connected yet. Prices will be empty.');
   }catch(e){
     API_UP = false;
     showBanner(
@@ -441,7 +519,7 @@ function renderCompare(q, data, out){
     o.source==='catalog' || ACTIVE.size===0 || ACTIVE.has(o.store_id));
   if(!offers.length){
     out.innerHTML = `<div class="empty">Nothing found for &ldquo;${esc(q)}&rdquo;.<br>
-      Try being more specific — &ldquo;full cream milk 2L&rdquo; beats &ldquo;milk&rdquo;.</div>`;
+      Try being more specific. &ldquo;Full cream milk 2L&rdquo; beats &ldquo;milk&rdquo;.</div>`;
     return;
   }
   const cheapest = offers[0];
@@ -545,7 +623,7 @@ function renderBasketResult(data, out){
   let html = `<div class="verdict ${esc(rec.verdict||'single_store')}">
       <h3>${esc(rec.headline||'')}</h3><p>${esc(rec.detail||'')}</p></div>`;
 
-  /* Per-shop totals — a complete picture, including what each shop can't supply. */
+  /* Per-shop totals: a complete picture, including what each shop can't supply. */
   html += '<h2>What each shop costs</h2>';
   (data.store_totals||[]).forEach(t=>{
     html += `<div class="card"><div class="row" style="align-items:center">
@@ -619,7 +697,7 @@ function pinItem(itemId, storeId){
   const item = BASKET.find(b=>String(b.id)===String(itemId));
   if(!item) return;
   item.pinned_store = item.pinned_store===storeId ? null : storeId;
-  toast(item.pinned_store ? 'Pinned — the plan will keep it there' : 'Unpinned');
+  toast(item.pinned_store ? 'Pinned. The plan will keep it there' : 'Unpinned');
   compareBasket();
 }
 
@@ -675,6 +753,7 @@ async function uploadPdf(){
     html += '</div>';
     out.innerHTML = html;
     input.value = '';
+    SPECIALS_CACHE = null;
     loadUploads();
     toast('Catalogue prices are now in your comparisons');
   }catch(e){
@@ -710,23 +789,35 @@ async function delUpload(id){
 /* ── Featured specials carousels ────────────────────────────
    One row per shop, bordered in that retailer's colour, on a
    gentle autoloop. The loop pauses the moment anyone touches,
-   scrolls or hovers a row — nothing more irritating than a
+   scrolls or hovers a row. Nothing is more irritating than a
    carousel that moves while you're reading it.              */
 let LOOPS = [];
+let SPECIALS_CACHE = null;
 
 function stopLoops(){ LOOPS.forEach(clearInterval); LOOPS = []; }
 
-async function loadSpecials(){
-  const box = document.getElementById('specialsOut');
+async function getSpecials(){
+  if(SPECIALS_CACHE) return SPECIALS_CACHE;
+  const res = await fetch(API+'/api/specials?per_store=5');
+  if(!res.ok) throw new Error(await res.text());
+  SPECIALS_CACHE = await res.json();
+  return SPECIALS_CACHE;
+}
+
+async function loadSpecials(targetId='specialsOut', prefix='deals', viewId='view-deals'){
+  const box = document.getElementById(targetId);
+  if(!box) return;
   box.innerHTML = '<div class="spinner"></div>';
   stopLoops();
   try{
-    const res = await fetch(API+'/api/specials?per_store=5');
-    if(!res.ok) throw new Error(await res.text());
-    const data = await res.json();
+    const data = await getSpecials();
     const groups = (data.stores||[]).filter(g=>g.items && g.items.length);
     if(!groups.length){
-      box.innerHTML = '<div class="empty">No specials loaded yet.<br>Run a sync, or upload a catalogue.</div>';
+      box.innerHTML = `<div class="specials-empty">
+        <strong>Weekly specials are refreshing</strong>
+        <p>Search for anything now, or add a current retailer catalogue while the live offers update.</p>
+        <button class="btn ghost sm" onclick="show('upload')">Add catalogue</button>
+      </div>`;
       return;
     }
     box.innerHTML = groups.map((g,gi)=>`
@@ -736,31 +827,37 @@ async function loadSpecials(){
         ${g.source==='catalog'?'<span class="pill cat">catalogue</span>':''}
         <span class="count">${g.items.length} deals</span>
       </div>
-      <div class="carousel" id="car-${gi}">
+      <div class="carousel" id="${prefix}-car-${gi}">
         ${g.items.map(it=>`
-          <div class="scard" style="border-color:${esc(g.store_colour)}"
-               onclick="searchFor('${esc(it.product_name||'').replace(/'/g,"\\'")}')">
+          <button class="scard" type="button"
+               style="--store-color:${esc(g.store_colour)};border-color:${esc(g.store_colour)}"
+               onclick="searchFor('${esc(it.product_name||'').replace(/'/g,"\\'")}')"
+               aria-label="Compare ${esc(it.product_name||'special')} at ${esc(g.store_name)}">
             ${it.discount_pct?`<span class="sflag">&minus;${Math.round(it.discount_pct)}%</span>`:''}
-            ${it.image_url?`<img class="simg" src="${esc(it.image_url)}" loading="lazy" alt="">`
-                          :'<div class="simg"></div>'}
+            ${it.image_url?`<img class="simg" src="${esc(it.image_url)}" loading="lazy" alt="${esc(it.product_name||'')}">`
+                          :'<div class="simg no-photo"><span>Weekly special</span></div>'}
             <div class="sname">${esc(it.product_name||'')}</div>
             ${it.unit_price?`<div class="sunit">${R(it.unit_price)} ${esc(it.unit_price_label||'')}</div>`:''}
             <div class="sprice">${R(it.price)}${it.was_price?`<span class="swas">${R(it.was_price)}</span>`:''}</div>
-          </div>`).join('')}
+          </button>`).join('')}
       </div>
-      <div class="dots" id="dots-${gi}">
+      <div class="dots" id="${prefix}-dots-${gi}" aria-hidden="true">
         ${g.items.map((_,i)=>`<i class="${i===0?'on':''}"></i>`).join('')}
       </div>`).join('');
 
-    groups.forEach((g,gi)=>setupCarousel(gi, g.items.length));
+    groups.forEach((g,gi)=>setupCarousel(prefix, gi, g.items.length, viewId));
   }catch(e){
-    box.innerHTML = `<div class="empty">Couldn't load specials.<br><span style="font-size:12px">${esc(e.message)}</span></div>`;
+    box.innerHTML = `<div class="specials-empty">
+      <strong>Specials could not load</strong>
+      <p>Search still works. Try this section again in a moment.</p>
+      <button class="btn ghost sm" onclick="loadSpecials('${esc(targetId)}','${esc(prefix)}','${esc(viewId)}')">Try again</button>
+    </div>`;
   }
 }
 
-function setupCarousel(index, count){
-  const rail = document.getElementById('car-'+index);
-  const dots = document.getElementById('dots-'+index);
+function setupCarousel(prefix, index, count, viewId){
+  const rail = document.getElementById(`${prefix}-car-${index}`);
+  const dots = document.getElementById(`${prefix}-dots-${index}`);
   if(!rail) return;
 
   const cardWidth = () => {
@@ -780,9 +877,11 @@ function setupCarousel(index, count){
     rail.addEventListener(ev, ()=>{ paused = true; }, {passive:true}));
   rail.addEventListener('mouseleave', ()=>{ paused = false; });
 
+  if(window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
   const timer = setInterval(()=>{
     if(paused || document.hidden) return;
-    if(document.getElementById('view-deals').classList.contains('hide')) return;
+    if(document.getElementById(viewId).classList.contains('hide')) return;
     const w = cardWidth();
     const next = Math.round(rail.scrollLeft / w) + 1;
     rail.scrollTo({left: next >= count ? 0 : next * w, behavior:'smooth'});
@@ -830,6 +929,7 @@ async function loadDeals(){
 checkApi();
 loadStores();
 renderBasket();
+loadSpecials('homeSpecialsOut','home','view-search');
 </script>
 </body>
 </html>
