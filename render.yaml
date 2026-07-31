@@ -35,6 +35,8 @@ services:
         value: "false"
       - key: SYNC_PAGE_SIZE
         value: "50"
+      - key: OCR_DPI
+        value: "200"
       - key: FUEL_PRICE_PER_LITRE
         value: "21.50"
       - key: MIN_SPLIT_SAVING_RAND

@@ -30,6 +30,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Query, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
+from starlette.concurrency import run_in_threadpool
 
 from . import basket as basket_engine
 from . import db, ocr, sync
@@ -510,7 +511,9 @@ async def upload_catalog(
     upload_id = str(upload_row["id"])
 
     try:
-        result = ocr.process_pdf(payload)
+        # OCR can take tens of seconds on Render's free instance. Keep it off
+        # the event loop so /health remains responsive while Tesseract runs.
+        result = await run_in_threadpool(ocr.process_pdf, payload)
     except Exception as exc:  # noqa: BLE001
         await db.execute(
             "UPDATE catalog_uploads SET status='failed', error=%(e)s WHERE id=%(id)s;",
