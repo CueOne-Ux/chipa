@@ -1,0 +1,17 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+psycopg[binary,pool]==3.2.3
+httpx==0.28.1
+python-multipart==0.0.20
+rapidfuzz==3.11.0
+
+# PDF catalog ingestion + OCR
+PyMuPDF==1.25.1
+pytesseract==0.3.13
+Pillow==11.1.0
+
+# Optional in-process scheduler (off by default — see app/sync.py)
+APScheduler==3.11.0
+
+# Dev
+pytest==8.3.4

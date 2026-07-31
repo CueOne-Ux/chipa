@@ -1,0 +1,835 @@
+<!DOCTYPE html>
+<html lang="en-ZA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0B0B0F">
+<title>Chipa — cross-store grocery prices</title>
+<link rel="manifest" href="data:application/json,{%22name%22:%22Chipa%22,%22short_name%22:%22Chipa%22,%22start_url%22:%22/%22,%22display%22:%22standalone%22,%22background_color%22:%22%230B0B0F%22,%22theme_color%22:%22%230B0B0F%22}">
+<style>
+  :root{
+    --bg:#0B0B0F; --surface:#15151C; --surface-2:#1D1D26; --line:#2A2A36;
+    --text:#F2F2F5; --muted:#8A8A9A; --accent:#FF6B2C; --accent-dim:#3A2318;
+    --good:#31C48D; --warn:#F6C445; --bad:#F26B6B; --catalog:#8B6BFF;
+    --r:14px; --r-sm:9px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--text); min-height:100vh;
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; padding-bottom:84px;
+  }
+  .wrap{max-width:720px;margin:0 auto;padding:0 16px}
+
+  /* ── Header ─────────────────────────────────────────────── */
+  header{padding:20px 0 12px;display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+  .brand{font-size:30px;font-weight:800;letter-spacing:-.03em}
+  .brand span{color:var(--accent)}
+  .tag{font-size:13px;color:var(--muted);margin-top:2px}
+  .loc-btn{
+    background:var(--surface);border:1px solid var(--line);color:var(--text);
+    border-radius:999px;padding:9px 14px;font-size:13px;cursor:pointer;
+    display:flex;align-items:center;gap:6px;white-space:nowrap;
+  }
+  .loc-btn:hover{border-color:var(--accent)}
+  .loc-btn.set{border-color:var(--good);color:var(--good)}
+
+  /* ── Tabs ───────────────────────────────────────────────── */
+  nav{
+    position:fixed;bottom:0;left:0;right:0;background:rgba(11,11,15,.94);
+    backdrop-filter:blur(14px);border-top:1px solid var(--line);z-index:50;
+  }
+  .tabs{max-width:720px;margin:0 auto;display:grid;grid-template-columns:repeat(4,1fr)}
+  .tab{
+    background:none;border:0;color:var(--muted);padding:11px 4px 14px;
+    font-size:11px;font-weight:600;cursor:pointer;display:flex;
+    flex-direction:column;align-items:center;gap:4px;
+  }
+  .tab svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.8}
+  .tab.on{color:var(--accent)}
+  .badge{
+    position:absolute;transform:translate(13px,-6px);background:var(--accent);
+    color:#fff;border-radius:99px;font-size:10px;padding:1px 5px;font-weight:700;
+  }
+
+  /* ── Search ─────────────────────────────────────────────── */
+  .searchbar{display:flex;gap:8px;margin:6px 0 14px}
+  .searchbar input{
+    flex:1;background:var(--surface);border:1px solid var(--line);color:var(--text);
+    border-radius:var(--r);padding:14px 15px;font-size:16px;outline:none;
+  }
+  .searchbar input:focus{border-color:var(--accent)}
+  .btn{
+    background:var(--accent);color:#fff;border:0;border-radius:var(--r);
+    padding:14px 20px;font-size:15px;font-weight:700;cursor:pointer;white-space:nowrap;
+  }
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btn.ghost{background:var(--surface);border:1px solid var(--line);color:var(--text)}
+  .btn.sm{padding:8px 13px;font-size:13px;border-radius:var(--r-sm)}
+
+  .filters{display:flex;gap:7px;flex-wrap:wrap;margin-bottom:14px}
+  .chip{
+    background:var(--surface);border:1px solid var(--line);color:var(--muted);
+    border-radius:999px;padding:7px 13px;font-size:13px;cursor:pointer;
+    display:flex;align-items:center;gap:6px;
+  }
+  .chip.on{color:var(--text);border-color:var(--accent);background:var(--accent-dim)}
+  .dot{width:9px;height:9px;border-radius:3px;flex:none}
+
+  /* ── Cards ──────────────────────────────────────────────── */
+  .card{
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--r);
+    padding:14px;margin-bottom:10px;
+  }
+  .row{display:flex;gap:12px;align-items:flex-start}
+  .thumb{
+    width:56px;height:56px;border-radius:var(--r-sm);background:var(--surface-2);
+    object-fit:contain;flex:none;
+  }
+  .pname{font-size:15px;font-weight:650;line-height:1.3}
+  .pmeta{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .price{font-size:19px;font-weight:800;letter-spacing:-.02em}
+  .was{font-size:13px;color:var(--muted);text-decoration:line-through;margin-left:6px}
+  .unit{font-size:12px;color:var(--muted)}
+  .right{margin-left:auto;text-align:right;flex:none}
+
+  .pill{
+    display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;
+    padding:3px 8px;border-radius:999px;
+  }
+  .pill.best{background:rgba(49,196,141,.14);color:var(--good)}
+  .pill.promo{background:rgba(246,196,69,.14);color:var(--warn)}
+  .pill.cat{background:rgba(139,107,255,.15);color:var(--catalog)}
+  .pill.review{background:rgba(242,107,107,.13);color:var(--bad)}
+
+  .storeline{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600}
+
+  /* ── Compare rows ───────────────────────────────────────── */
+  .offer{
+    display:flex;align-items:center;gap:10px;padding:11px 12px;
+    border:1px solid var(--line);border-radius:var(--r-sm);margin-top:7px;
+    background:var(--surface-2);
+  }
+  .offer.best{border-color:var(--good);background:rgba(49,196,141,.07)}
+  .offer.pinned{border-color:var(--accent);background:var(--accent-dim)}
+
+  /* ── Verdict ────────────────────────────────────────────── */
+  .verdict{border-radius:var(--r);padding:16px;margin-bottom:14px;border:1px solid}
+  .verdict.split{background:rgba(49,196,141,.09);border-color:rgba(49,196,141,.35)}
+  .verdict.single_store,.verdict.split_marginal{background:var(--surface);border-color:var(--line)}
+  .verdict h3{font-size:17px;font-weight:750;margin-bottom:5px;letter-spacing:-.01em}
+  .verdict p{font-size:13.5px;color:var(--muted);line-height:1.5}
+
+  /* ── Upload ─────────────────────────────────────────────── */
+  .drop{
+    border:1.5px dashed var(--line);border-radius:var(--r);padding:30px 18px;
+    text-align:center;cursor:pointer;background:var(--surface);
+  }
+  .drop:hover,.drop.over{border-color:var(--accent);background:var(--accent-dim)}
+  .field{margin-bottom:11px}
+  .field label{display:block;font-size:12.5px;color:var(--muted);margin-bottom:5px;font-weight:600}
+  .field input{
+    width:100%;background:var(--surface);border:1px solid var(--line);color:var(--text);
+    border-radius:var(--r-sm);padding:11px 12px;font-size:15px;outline:none;
+  }
+  .field input:focus{border-color:var(--accent)}
+
+  /* ── Featured specials carousels ────────────────────────── */
+  .carousel-head{
+    display:flex;align-items:center;gap:8px;margin:20px 0 10px;
+  }
+  .carousel-head .dot{width:11px;height:11px;border-radius:4px}
+  .carousel-head h3{font-size:16px;font-weight:750;letter-spacing:-.01em}
+  .carousel-head .count{font-size:12px;color:var(--muted);margin-left:auto}
+  .carousel{
+    display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;
+    scroll-behavior:smooth;padding-bottom:6px;
+    scrollbar-width:none;-ms-overflow-style:none;
+  }
+  .carousel::-webkit-scrollbar{display:none}
+  .scard{
+    scroll-snap-align:start;flex:0 0 172px;background:var(--surface);
+    border:2px solid var(--line);border-radius:var(--r);padding:11px;
+    display:flex;flex-direction:column;gap:7px;position:relative;
+  }
+  .scard .simg{
+    width:100%;height:96px;border-radius:var(--r-sm);background:var(--surface-2);
+    object-fit:contain;
+  }
+  .scard .sname{
+    font-size:13px;font-weight:650;line-height:1.35;
+    display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  }
+  .scard .sprice{font-size:17px;font-weight:800;letter-spacing:-.02em;margin-top:auto}
+  .scard .swas{font-size:12px;color:var(--muted);text-decoration:line-through;margin-left:5px}
+  .scard .sunit{font-size:11px;color:var(--muted)}
+  .sflag{
+    position:absolute;top:8px;right:8px;background:var(--bad);color:#fff;
+    font-size:11px;font-weight:800;padding:2px 7px;border-radius:999px;
+  }
+  .dots{display:flex;gap:5px;justify-content:center;margin-top:9px}
+  .dots i{
+    width:5px;height:5px;border-radius:99px;background:var(--line);
+    transition:width .25s,background .25s;
+  }
+  .dots i.on{width:15px;background:var(--accent)}
+
+  h2{font-size:19px;font-weight:750;margin:18px 0 11px;letter-spacing:-.02em}
+  .empty{text-align:center;color:var(--muted);padding:44px 20px;font-size:14px;line-height:1.6}
+  .spinner{
+    width:19px;height:19px;border:2.5px solid var(--line);border-top-color:var(--accent);
+    border-radius:50%;animation:spin .7s linear infinite;margin:26px auto;
+  }
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .hide{display:none!important}
+  .note{font-size:12px;color:var(--muted);margin-top:7px;line-height:1.5}
+  .qty{display:flex;align-items:center;gap:8px}
+  .qty button{
+    width:27px;height:27px;border-radius:7px;background:var(--surface-2);
+    border:1px solid var(--line);color:var(--text);cursor:pointer;font-size:15px;
+  }
+  .toast{
+    position:fixed;bottom:96px;left:50%;transform:translateX(-50%);
+    background:var(--surface-2);border:1px solid var(--line);color:var(--text);
+    padding:11px 17px;border-radius:999px;font-size:13.5px;z-index:99;
+    opacity:0;transition:opacity .25s;pointer-events:none;
+  }
+  .toast.show{opacity:1}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header>
+    <div>
+      <div class="brand">Chi<span>pa</span></div>
+      <div class="tag">One list. Every shop. Real prices.</div>
+    </div>
+    <button class="loc-btn" id="locBtn" onclick="askLocation()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
+      </svg>
+      <span id="locLabel">Set area</span>
+    </button>
+  </header>
+
+  <!-- ── SEARCH ──────────────────────────────────────────── -->
+  <section id="view-search">
+    <div class="searchbar">
+      <input id="q" placeholder="Try &ldquo;chicken fillet&rdquo; or &ldquo;full cream milk 2L&rdquo;"
+             onkeydown="if(event.key==='Enter')doSearch()">
+      <button class="btn" onclick="doSearch()">Search</button>
+    </div>
+    <div class="filters" id="storeFilters"></div>
+    <div id="searchOut"></div>
+  </section>
+
+  <!-- ── BASKET ──────────────────────────────────────────── -->
+  <section id="view-basket" class="hide">
+    <h2>Your list</h2>
+    <div class="searchbar">
+      <input id="addItem" placeholder="Add an item to your list"
+             onkeydown="if(event.key==='Enter')addToBasket()">
+      <button class="btn" onclick="addToBasket()">Add</button>
+    </div>
+    <div id="basketItems"></div>
+    <div id="basketActions" class="hide" style="display:flex;gap:8px;margin:14px 0">
+      <button class="btn" style="flex:1" onclick="compareBasket()">Compare across shops</button>
+      <button class="btn ghost sm" onclick="clearBasket()">Clear</button>
+    </div>
+    <div id="basketOut"></div>
+  </section>
+
+  <!-- ── UPLOAD ──────────────────────────────────────────── -->
+  <section id="view-upload" class="hide">
+    <h2>Upload a specials catalogue</h2>
+    <p class="note" style="margin-bottom:14px">
+      Some shops — Food Lover's Market, Boxer, independent SPARs — publish specials
+      only as a PDF leaflet, with no online store to compare against. Upload one here
+      and Chipa reads the prices off it, including flattened graphics, then prices
+      them against the shops it already tracks.
+    </p>
+
+    <div class="field">
+      <label>Shop name</label>
+      <input id="storeLabel" placeholder="e.g. Food Lover's Market Rivonia">
+    </div>
+    <div class="field">
+      <label>Specials valid until (optional)</label>
+      <input id="validTo" type="date">
+    </div>
+
+    <div class="drop" id="drop" onclick="document.getElementById('pdf').click()">
+      <div style="font-size:15px;font-weight:650;margin-bottom:5px">Drop a PDF here</div>
+      <div class="note">or tap to choose &middot; max 25&nbsp;MB</div>
+    </div>
+    <input type="file" id="pdf" accept="application/pdf" class="hide" onchange="uploadPdf()">
+
+    <div id="uploadOut"></div>
+    <h2>Previous uploads</h2>
+    <div id="uploadList"></div>
+  </section>
+
+  <!-- ── DEALS ───────────────────────────────────────────── -->
+  <section id="view-deals" class="hide">
+    <h2>Featured specials</h2>
+    <div id="specialsOut"></div>
+    <h2>Best deals right now</h2>
+    <div id="dealsOut"></div>
+  </section>
+</div>
+
+<nav>
+  <div class="tabs">
+    <button class="tab on" data-view="search" onclick="show('search')">
+      <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+      Search
+    </button>
+    <button class="tab" data-view="basket" onclick="show('basket')">
+      <svg viewBox="0 0 24 24"><path d="M3 6h18l-2 12H5L3 6z"/><path d="M8 6V4a4 4 0 018 0v2"/></svg>
+      <span class="badge hide" id="cartBadge">0</span>
+      List
+    </button>
+    <button class="tab" data-view="upload" onclick="show('upload')">
+      <svg viewBox="0 0 24 24"><path d="M12 17V3"/><path d="M6 9l6-6 6 6"/><path d="M4 17v3a1 1 0 001 1h14a1 1 0 001-1v-3"/></svg>
+      Catalogue
+    </button>
+    <button class="tab" data-view="deals" onclick="show('deals')">
+      <svg viewBox="0 0 24 24"><path d="M20.6 13.4L13.4 20.6a2 2 0 01-2.8 0l-7.2-7.2A2 2 0 013 12V4a1 1 0 011-1h8a2 2 0 011.4.6l7.2 7.2a2 2 0 010 2.8z"/><circle cx="7.5" cy="7.5" r="1.2"/></svg>
+      Deals
+    </button>
+  </div>
+</nav>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ══════════════════════════════════════════════════════════
+   CONFIG — set this before uploading to shared hosting.
+
+   Leave as '' when the API serves this file itself (Render).
+   Set to the full API origin when hosting this file separately
+   on cPanel / domains.co.za, e.g.
+
+       const API = 'https://chipa-api.onrender.com';
+
+   The API must list this page's origin in CORS_ORIGINS.
+   ══════════════════════════════════════════════════════════ */
+const API = '';
+
+let STORES = [], ACTIVE = new Set(), BASKET = [], LOCATION = null, DISTANCES = {};
+let API_UP = null;
+
+const R = n => 'R' + Number(n).toFixed(2);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function toast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2400);
+}
+
+function show(view){
+  ['search','basket','upload','deals'].forEach(v=>{
+    document.getElementById('view-'+v).classList.toggle('hide', v!==view);
+  });
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('on', t.dataset.view===view));
+  if(view==='deals'){ loadSpecials(); loadDeals(); } else { stopLoops(); }
+  if(view==='upload') loadUploads();
+}
+
+/* ── Location ──────────────────────────────────────────────
+   Deliberately NOT requested on launch. A cold permission
+   prompt before the app has shown any value reads as a grab.
+   We ask only when the shopper opts in, and everything works
+   without it — distances simply aren't factored in.        */
+function askLocation(){
+  if(!navigator.geolocation){ toast('Location not supported on this device'); return; }
+  toast('Finding your area…');
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      LOCATION = {lat:pos.coords.latitude, lon:pos.coords.longitude};
+      const b = document.getElementById('locBtn');
+      b.classList.add('set');
+      document.getElementById('locLabel').textContent = 'Area set';
+      toast('Petrol costs now included in comparisons');
+    },
+    ()=>toast('No problem — prices still work without it'),
+    {timeout:8000}
+  );
+}
+
+/* ── Connection check ───────────────────────────────────────
+   A static copy of this page on shared hosting has no backend
+   of its own. Say so plainly on load rather than letting every
+   button fail one by one with no explanation.              */
+async function checkApi(){
+  try{
+    const res = await fetch(API+'/health', {cache:'no-store'});
+    if(!res.ok) throw new Error('status '+res.status);
+    const data = await res.json();
+    API_UP = true;
+    if(!data.database) showBanner(
+      'Backend is up but has no database connected yet — prices will be empty.');
+  }catch(e){
+    API_UP = false;
+    showBanner(
+      'Not connected to the Chipa API' +
+      (API ? ` at ${API}` : '') +
+      '. Search, lists and specials need the backend running.');
+  }
+}
+
+function showBanner(message){
+  if(document.getElementById('apiBanner')) return;
+  const bar = document.createElement('div');
+  bar.id = 'apiBanner';
+  bar.style.cssText =
+    'background:rgba(242,107,107,.12);border:1px solid rgba(242,107,107,.4);' +
+    'color:#F2F2F5;border-radius:var(--r);padding:12px 14px;margin:0 0 14px;' +
+    'font-size:13px;line-height:1.5';
+  bar.innerHTML = esc(message);
+  const wrap = document.querySelector('.wrap');
+  wrap.insertBefore(bar, wrap.children[1]);
+}
+
+/* ── Stores ─────────────────────────────────────────────── */
+async function loadStores(){
+  try{
+    const res = await fetch(API+'/api/stores');
+    if(!res.ok) throw new Error('status '+res.status);
+    STORES = await res.json();
+  }catch(e){
+    STORES = [
+      {id:'woolworths',name:'Woolworths',colour:'#000000'},
+      {id:'pnp',name:'Pick n Pay',colour:'#0057B8'},
+      {id:'checkers',name:'Checkers',colour:'#E4610F'}
+    ];
+  }
+  STORES.forEach(s=>ACTIVE.add(s.id));
+  const box = document.getElementById('storeFilters');
+  box.innerHTML = STORES.map(s=>`
+    <button class="chip on" data-store="${esc(s.id)}" onclick="toggleStore('${esc(s.id)}')">
+      <span class="dot" style="background:${esc(s.colour||'#666')}"></span>${esc(s.name)}
+    </button>`).join('');
+}
+
+function toggleStore(id){
+  ACTIVE.has(id) ? ACTIVE.delete(id) : ACTIVE.add(id);
+  document.querySelector(`.chip[data-store="${id}"]`).classList.toggle('on', ACTIVE.has(id));
+}
+
+/* ── Search ─────────────────────────────────────────────── */
+async function doSearch(){
+  const q = document.getElementById('q').value.trim();
+  if(!q) return;
+  const out = document.getElementById('searchOut');
+  out.innerHTML = '<div class="spinner"></div>';
+  try{
+    const res = await fetch(`${API}/api/compare?q=${encodeURIComponent(q)}`);
+    if(!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    renderCompare(q, data, out);
+  }catch(e){
+    out.innerHTML = `<div class="empty">Couldn't search right now.<br><span style="font-size:12px">${esc(e.message)}</span></div>`;
+  }
+}
+
+function renderCompare(q, data, out){
+  const offers = (data.offers||[]).filter(o=>
+    o.source==='catalog' || ACTIVE.size===0 || ACTIVE.has(o.store_id));
+  if(!offers.length){
+    out.innerHTML = `<div class="empty">Nothing found for &ldquo;${esc(q)}&rdquo;.<br>
+      Try being more specific — &ldquo;full cream milk 2L&rdquo; beats &ldquo;milk&rdquo;.</div>`;
+    return;
+  }
+  const cheapest = offers[0];
+  let html = '';
+
+  if(data.saving > 0){
+    html += `<div class="verdict split">
+      <h3>Save ${R(data.saving)} (${data.saving_pct}%)</h3>
+      <p>Same item, ${offers.length} shops. Cheapest at <strong>${esc(cheapest.store_name)}</strong>.</p>
+    </div>`;
+  }
+
+  html += `<div class="card"><div class="pname" style="margin-bottom:10px">${esc(cheapest.product_name)}</div>`;
+  offers.forEach(o=>{
+    const best = o.store_id===cheapest.store_id;
+    const bestUnit = data.best_unit_price_store===o.store_id;
+    html += `<div class="offer ${best?'best':''}">
+      <span class="dot" style="background:${esc(o.store_colour||'#666')}"></span>
+      <div style="min-width:0">
+        <div class="storeline">${esc(o.store_name)}
+          ${o.source==='catalog'?'<span class="pill cat">catalogue</span>':''}
+          ${o.confidence==='review'?'<span class="pill review">check match</span>':''}
+        </div>
+        <div class="pmeta">${esc(o.product_name||'')}</div>
+        ${o.unit_price?`<div class="unit">${R(o.unit_price)} ${esc(o.unit_price_label||'')}${bestUnit?' · best value':''}</div>`:''}
+      </div>
+      <div class="right">
+        <div class="price">${R(o.price)}${o.was_price?`<span class="was">${R(o.was_price)}</span>`:''}</div>
+        ${best?'<span class="pill best">cheapest</span>':''}
+      </div>
+    </div>`;
+  });
+  html += `<button class="btn sm" style="margin-top:12px;width:100%"
+            onclick="addToBasket('${esc(q).replace(/'/g,"\\'")}')">Add to my list</button></div>`;
+  out.innerHTML = html;
+}
+
+/* ── Basket ─────────────────────────────────────────────── */
+function addToBasket(text){
+  const input = document.getElementById('addItem');
+  const q = (text || input.value).trim();
+  if(!q) return;
+  BASKET.push({id:String(Date.now()+Math.random()), query:q, quantity:1, pinned_store:null});
+  if(!text) input.value = '';
+  renderBasket(); toast('Added to your list');
+}
+
+function clearBasket(){ BASKET = []; document.getElementById('basketOut').innerHTML=''; renderBasket(); }
+
+function renderBasket(){
+  const badge = document.getElementById('cartBadge');
+  badge.textContent = BASKET.length;
+  badge.classList.toggle('hide', !BASKET.length);
+  document.getElementById('basketActions').classList.toggle('hide', !BASKET.length);
+
+  const box = document.getElementById('basketItems');
+  if(!BASKET.length){
+    box.innerHTML = `<div class="empty">Your list is empty.<br>
+      Add what you need, then compare it across every shop at once.</div>`;
+    return;
+  }
+  box.innerHTML = BASKET.map((it,i)=>`
+    <div class="card"><div class="row" style="align-items:center">
+      <div style="flex:1;min-width:0">
+        <div class="pname">${esc(it.query)}</div>
+        ${it.pinned_store?`<div class="pmeta">pinned to ${esc(it.pinned_store)}</div>`:''}
+      </div>
+      <div class="qty">
+        <button onclick="setQty(${i},-1)">&minus;</button>
+        <span>${it.quantity}</span>
+        <button onclick="setQty(${i},1)">+</button>
+      </div>
+      <button class="btn ghost sm" onclick="removeItem(${i})">Remove</button>
+    </div></div>`).join('');
+}
+
+function setQty(i, delta){
+  BASKET[i].quantity = Math.max(1, BASKET[i].quantity + delta);
+  renderBasket();
+}
+function removeItem(i){ BASKET.splice(i,1); renderBasket(); }
+
+async function compareBasket(){
+  if(!BASKET.length) return;
+  const out = document.getElementById('basketOut');
+  out.innerHTML = '<div class="spinner"></div>';
+  try{
+    const res = await fetch(API+'/api/basket/compare',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({items:BASKET, distances:DISTANCES, max_stores:3})
+    });
+    if(!res.ok) throw new Error(await res.text());
+    renderBasketResult(await res.json(), out);
+  }catch(e){
+    out.innerHTML = `<div class="empty">Couldn't compare right now.<br><span style="font-size:12px">${esc(e.message)}</span></div>`;
+  }
+}
+
+function renderBasketResult(data, out){
+  const rec = data.recommendation || {};
+  let html = `<div class="verdict ${esc(rec.verdict||'single_store')}">
+      <h3>${esc(rec.headline||'')}</h3><p>${esc(rec.detail||'')}</p></div>`;
+
+  /* Per-shop totals — a complete picture, including what each shop can't supply. */
+  html += '<h2>What each shop costs</h2>';
+  (data.store_totals||[]).forEach(t=>{
+    html += `<div class="card"><div class="row" style="align-items:center">
+      <span class="dot" style="background:${esc(t.store_colour||'#666')}"></span>
+      <div style="min-width:0">
+        <div class="storeline">${esc(t.store_name)}</div>
+        <div class="pmeta">
+          ${t.items_found} item${t.items_found===1?'':'s'}
+          ${t.items_missing?` · <span style="color:var(--bad)">missing ${t.items_missing}</span>`:''}
+          ${t.distance_km?` · ${t.distance_km.toFixed(1)}km`:''}
+        </div>
+        ${t.items_missing?`<div class="note">No: ${esc(t.missing_names.join(', '))}</div>`:''}
+      </div>
+      <div class="right">
+        <div class="price">${R(t.subtotal)}</div>
+        ${t.total_with_fuel!=null?`<div class="unit">${R(t.total_with_fuel)} with petrol</div>`:''}
+      </div>
+    </div></div>`;
+  });
+
+  /* The split plan, when one is actually worth making. */
+  if(rec.split && rec.split.assignments && rec.split.stores.length>1){
+    html += `<h2>Split plan</h2><div class="card">`;
+    rec.split.assignments.forEach(a=>{
+      html += `<div class="offer">
+        <div style="min-width:0">
+          <div class="pname" style="font-size:14px">${esc(a.display_name)}</div>
+          <div class="pmeta">${esc(a.store_name)}${a.quantity>1?` × ${a.quantity}`:''}</div>
+        </div>
+        <div class="right"><div class="price" style="font-size:16px">${R(a.line_total)}</div></div>
+      </div>`;
+    });
+    html += `<div class="note" style="margin-top:11px">
+      Basket ${R(rec.split.subtotal)} + petrol ${R(rec.split.fuel_cost)}
+      + your time ${R(rec.split.time_cost)} = <strong>${R(rec.split.total_cost)}</strong>
+    </div></div>`;
+  }
+
+  /* Per-item offers, with the ability to move an item to another shop. */
+  html += '<h2>Move items between shops</h2>';
+  (data.items||[]).forEach(item=>{
+    html += `<div class="card">
+      <div class="pname">${esc(item.display_name)}
+        ${item.needs_review?'<span class="pill review">check match</span>':''}
+      </div>`;
+    (item.offers||[]).forEach(o=>{
+      const pinned = item.pinned_store===o.store_id;
+      const cheapest = item.cheapest && item.cheapest.store_id===o.store_id;
+      html += `<div class="offer ${pinned?'pinned':cheapest?'best':''}"
+                    onclick="pinItem('${esc(item.item_id)}','${esc(o.store_id)}')"
+                    style="cursor:pointer">
+        <span class="dot" style="background:${esc(o.store_colour||'#666')}"></span>
+        <div style="min-width:0">
+          <div class="storeline">${esc(o.store_name)}
+            ${o.source==='catalog'?'<span class="pill cat">catalogue</span>':''}</div>
+          ${o.unit_price?`<div class="unit">${R(o.unit_price)} ${esc(o.unit_price_label||'')}</div>`:''}
+        </div>
+        <div class="right">
+          <div class="price" style="font-size:16px">${R(o.price)}</div>
+          ${pinned?'<span class="pill best">pinned</span>':cheapest?'<span class="pill best">cheapest</span>':''}
+        </div>
+      </div>`;
+    });
+    html += `</div>`;
+  });
+
+  out.innerHTML = html;
+}
+
+function pinItem(itemId, storeId){
+  const item = BASKET.find(b=>String(b.id)===String(itemId));
+  if(!item) return;
+  item.pinned_store = item.pinned_store===storeId ? null : storeId;
+  toast(item.pinned_store ? 'Pinned — the plan will keep it there' : 'Unpinned');
+  compareBasket();
+}
+
+/* ── Catalogue upload ───────────────────────────────────── */
+const drop = document.getElementById('drop');
+['dragenter','dragover'].forEach(e=>drop.addEventListener(e,ev=>{
+  ev.preventDefault(); drop.classList.add('over');
+}));
+['dragleave','drop'].forEach(e=>drop.addEventListener(e,ev=>{
+  ev.preventDefault(); drop.classList.remove('over');
+}));
+drop.addEventListener('drop', ev=>{
+  const file = ev.dataTransfer.files[0];
+  if(file){ document.getElementById('pdf').files = ev.dataTransfer.files; uploadPdf(); }
+});
+
+async function uploadPdf(){
+  const input = document.getElementById('pdf');
+  const file = input.files[0];
+  if(!file) return;
+  const label = document.getElementById('storeLabel').value.trim();
+  if(!label){ toast('Add the shop name first'); return; }
+
+  const out = document.getElementById('uploadOut');
+  out.innerHTML = '<div class="spinner"></div><div class="note" style="text-align:center">Reading the leaflet…</div>';
+
+  const form = new FormData();
+  form.append('file', file);
+  form.append('store_label', label);
+  const validTo = document.getElementById('validTo').value;
+  if(validTo) form.append('valid_to', validTo);
+
+  try{
+    const res = await fetch(API+'/api/catalog/upload',{method:'POST', body:form});
+    if(!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    let html = `<div class="verdict split">
+      <h3>${data.offers_found} price${data.offers_found===1?'':'s'} found</h3>
+      <p>${data.page_count} page${data.page_count===1?'':'s'} ·
+         read via ${data.extraction==='ocr'?'OCR (flattened graphics)':'the PDF text layer'}</p>
+    </div><div class="card">`;
+    (data.offers||[]).forEach(o=>{
+      html += `<div class="offer">
+        <div style="min-width:0">
+          <div class="pname" style="font-size:14px">${esc(o.product_name)}</div>
+          <div class="pmeta">page ${o.page} · confidence ${(o.confidence*100).toFixed(0)}%
+            ${o.promo_text?' · '+esc(o.promo_text):''}</div>
+        </div>
+        <div class="right"><div class="price" style="font-size:16px">${R(o.price)}
+          ${o.was_price?`<span class="was">${R(o.was_price)}</span>`:''}</div></div>
+      </div>`;
+    });
+    html += '</div>';
+    out.innerHTML = html;
+    input.value = '';
+    loadUploads();
+    toast('Catalogue prices are now in your comparisons');
+  }catch(e){
+    out.innerHTML = `<div class="empty">Upload failed.<br><span style="font-size:12px">${esc(e.message)}</span></div>`;
+  }
+}
+
+async function loadUploads(){
+  const box = document.getElementById('uploadList');
+  try{
+    const res = await fetch(API+'/api/catalog/uploads');
+    const rows = await res.json();
+    if(!rows.length){ box.innerHTML = '<div class="empty">No catalogues uploaded yet.</div>'; return; }
+    box.innerHTML = rows.map(r=>`
+      <div class="card"><div class="row" style="align-items:center">
+        <div style="min-width:0">
+          <div class="pname" style="font-size:14px">${esc(r.store_label)}</div>
+          <div class="pmeta">${esc(r.filename)} · ${r.offer_count} prices
+            ${r.valid_to?` · until ${esc(r.valid_to)}`:''}</div>
+        </div>
+        <button class="btn ghost sm" onclick="delUpload('${esc(r.id)}')">Delete</button>
+      </div></div>`).join('');
+  }catch(e){
+    box.innerHTML = '<div class="empty">Couldn’t load uploads.</div>';
+  }
+}
+
+async function delUpload(id){
+  await fetch(`${API}/api/catalog/uploads/${id}`,{method:'DELETE'});
+  loadUploads(); toast('Deleted');
+}
+
+/* ── Featured specials carousels ────────────────────────────
+   One row per shop, bordered in that retailer's colour, on a
+   gentle autoloop. The loop pauses the moment anyone touches,
+   scrolls or hovers a row — nothing more irritating than a
+   carousel that moves while you're reading it.              */
+let LOOPS = [];
+
+function stopLoops(){ LOOPS.forEach(clearInterval); LOOPS = []; }
+
+async function loadSpecials(){
+  const box = document.getElementById('specialsOut');
+  box.innerHTML = '<div class="spinner"></div>';
+  stopLoops();
+  try{
+    const res = await fetch(API+'/api/specials?per_store=5');
+    if(!res.ok) throw new Error(await res.text());
+    const data = await res.json();
+    const groups = (data.stores||[]).filter(g=>g.items && g.items.length);
+    if(!groups.length){
+      box.innerHTML = '<div class="empty">No specials loaded yet.<br>Run a sync, or upload a catalogue.</div>';
+      return;
+    }
+    box.innerHTML = groups.map((g,gi)=>`
+      <div class="carousel-head">
+        <span class="dot" style="background:${esc(g.store_colour)}"></span>
+        <h3>${esc(g.store_name)}</h3>
+        ${g.source==='catalog'?'<span class="pill cat">catalogue</span>':''}
+        <span class="count">${g.items.length} deals</span>
+      </div>
+      <div class="carousel" id="car-${gi}">
+        ${g.items.map(it=>`
+          <div class="scard" style="border-color:${esc(g.store_colour)}"
+               onclick="searchFor('${esc(it.product_name||'').replace(/'/g,"\\'")}')">
+            ${it.discount_pct?`<span class="sflag">&minus;${Math.round(it.discount_pct)}%</span>`:''}
+            ${it.image_url?`<img class="simg" src="${esc(it.image_url)}" loading="lazy" alt="">`
+                          :'<div class="simg"></div>'}
+            <div class="sname">${esc(it.product_name||'')}</div>
+            ${it.unit_price?`<div class="sunit">${R(it.unit_price)} ${esc(it.unit_price_label||'')}</div>`:''}
+            <div class="sprice">${R(it.price)}${it.was_price?`<span class="swas">${R(it.was_price)}</span>`:''}</div>
+          </div>`).join('')}
+      </div>
+      <div class="dots" id="dots-${gi}">
+        ${g.items.map((_,i)=>`<i class="${i===0?'on':''}"></i>`).join('')}
+      </div>`).join('');
+
+    groups.forEach((g,gi)=>setupCarousel(gi, g.items.length));
+  }catch(e){
+    box.innerHTML = `<div class="empty">Couldn't load specials.<br><span style="font-size:12px">${esc(e.message)}</span></div>`;
+  }
+}
+
+function setupCarousel(index, count){
+  const rail = document.getElementById('car-'+index);
+  const dots = document.getElementById('dots-'+index);
+  if(!rail) return;
+
+  const cardWidth = () => {
+    const card = rail.querySelector('.scard');
+    return card ? card.offsetWidth + 10 : 182;
+  };
+
+  const syncDots = () => {
+    const active = Math.round(rail.scrollLeft / cardWidth());
+    [...dots.children].forEach((d,i)=>d.classList.toggle('on', i===active));
+  };
+  rail.addEventListener('scroll', syncDots, {passive:true});
+
+  // Stagger each row so they don't all advance in lockstep.
+  let paused = false;
+  ['pointerdown','touchstart','wheel','mouseenter'].forEach(ev=>
+    rail.addEventListener(ev, ()=>{ paused = true; }, {passive:true}));
+  rail.addEventListener('mouseleave', ()=>{ paused = false; });
+
+  const timer = setInterval(()=>{
+    if(paused || document.hidden) return;
+    if(document.getElementById('view-deals').classList.contains('hide')) return;
+    const w = cardWidth();
+    const next = Math.round(rail.scrollLeft / w) + 1;
+    rail.scrollTo({left: next >= count ? 0 : next * w, behavior:'smooth'});
+  }, 4000 + index * 700);
+
+  LOOPS.push(timer);
+}
+
+function searchFor(term){
+  if(!term) return;
+  document.getElementById('q').value = term;
+  show('search');
+  doSearch();
+}
+
+/* ── Deals ──────────────────────────────────────────────── */
+async function loadDeals(){
+  const box = document.getElementById('dealsOut');
+  box.innerHTML = '<div class="spinner"></div>';
+  try{
+    const res = await fetch(API+'/api/deals?limit=40');
+    const rows = await res.json();
+    if(!rows.length){ box.innerHTML='<div class="empty">No deals loaded yet.</div>'; return; }
+    box.innerHTML = rows.map(d=>`
+      <div class="card"><div class="row">
+        ${d.image_url?`<img class="thumb" src="${esc(d.image_url)}" loading="lazy" alt="">`:''}
+        <div style="min-width:0;flex:1">
+          <div class="pname">${esc(d.product_name)}</div>
+          <div class="storeline" style="margin-top:4px">
+            <span class="dot" style="background:${esc(d.store_colour||'#666')}"></span>
+            ${esc(d.store_name)}
+          </div>
+          ${d.unit_price?`<div class="unit">${R(d.unit_price)} ${esc(d.unit_price_label||'')}</div>`:''}
+        </div>
+        <div class="right">
+          <div class="price">${R(d.price)}${d.was_price?`<span class="was">${R(d.was_price)}</span>`:''}</div>
+          ${d.discount_pct?`<span class="pill promo">&minus;${d.discount_pct}%</span>`:''}
+        </div>
+      </div></div>`).join('');
+  }catch(e){
+    box.innerHTML = '<div class="empty">Couldn’t load deals.</div>';
+  }
+}
+
+checkApi();
+loadStores();
+renderBasket();
+</script>
+</body>
+</html>

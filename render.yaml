@@ -1,0 +1,66 @@
+# Render deployment.
+#
+# NOTE ON THE FREE TIER
+# ---------------------
+# A free Render web service sleeps after ~15 minutes without inbound traffic.
+# The previous version of this project ran its price refresh on an in-process
+# APScheduler, which the sleep killed — that was the real cause of prices
+# going stale, not the scraping logic.
+#
+# Sync is therefore driven from OUTSIDE the web process. Either:
+#   (a) the `chipa-sync` cron service below (needs a paid plan), or
+#   (b) the GitHub Actions workflow in deploy/sync-cron.yml (free), which
+#       POSTs to /api/admin/sync on a schedule.
+#
+# Option (b) is recommended while on the free tier.
+
+services:
+  - type: web
+    name: chipa-api
+    runtime: python
+    rootDir: backend
+    plan: free
+    buildCommand: |
+      apt-get update -qq && apt-get install -y -qq tesseract-ocr || true
+      pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: DATABASE_URL
+        sync: false
+      - key: RAPIDAPI_KEY
+        sync: false
+      - key: ADMIN_TOKEN
+        sync: false
+      - key: ENABLE_INTERNAL_SCHEDULER
+        value: "false"
+      - key: SYNC_PAGE_SIZE
+        value: "50"
+      - key: FUEL_PRICE_PER_LITRE
+        value: "21.50"
+      - key: MIN_SPLIT_SAVING_RAND
+        value: "25.0"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Paid-plan alternative to the GitHub Actions cron.
+#
+# COMMENTED OUT DELIBERATELY: Render's free plan does not include cron
+# services, and a blueprint containing one fails to deploy. Uncomment only
+# after moving to a paid plan — until then, deploy/sync-cron.yml does the job
+# for free.
+#
+#  - type: cron
+#    name: chipa-sync
+#    runtime: python
+#    rootDir: backend
+#    plan: starter
+#    schedule: "0 3 * * *"          # 03:00 UTC daily = 05:00 SAST
+#    buildCommand: pip install -r requirements.txt
+#    startCommand: python -m app.cli sync
+#    envVars:
+#      - key: DATABASE_URL
+#        sync: false
+#      - key: RAPIDAPI_KEY
+#        sync: false
