@@ -1,0 +1,54 @@
+# GitHub Actions scheduled sync.
+#
+# Put this at .github/workflows/sync-cron.yml in the chipa repo.
+#
+# This is the free fix for Render's sleeping free tier: instead of relying on
+# a scheduler inside a process that gets suspended, GitHub calls the API on a
+# schedule from outside. The request also wakes the service, so the sync runs
+# on a live process every time.
+#
+# Required repo secrets (Settings -> Secrets and variables -> Actions):
+#   CHIPA_API_URL    e.g. https://chipa-api.onrender.com
+#   CHIPA_ADMIN_TOKEN  same value as the ADMIN_TOKEN env var on Render
+
+name: Chipa price sync
+
+on:
+  schedule:
+    - cron: "0 3 * * *"      # 05:00 SAST daily
+  workflow_dispatch:          # allows a manual run from the Actions tab
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wake the service
+        run: |
+          for i in 1 2 3 4 5 6; do
+            if curl -fsS --max-time 30 "${{ secrets.CHIPA_API_URL }}/health"; then
+              echo "awake"; break
+            fi
+            echo "waiting for cold start ($i)..."; sleep 15
+          done
+
+      - name: Trigger sync
+        run: |
+          response=$(curl -sS -w "\n%{http_code}" -X POST \
+            --max-time 1800 \
+            -H "X-Admin-Token: ${{ secrets.CHIPA_ADMIN_TOKEN }}" \
+            "${{ secrets.CHIPA_API_URL }}/api/admin/sync")
+
+          body=$(echo "$response" | head -n -1)
+          code=$(echo "$response" | tail -n 1)
+          echo "$body"
+
+          if [ "$code" != "200" ]; then
+            echo "::error::Sync failed with HTTP $code"
+            exit 1
+          fi
+
+      - name: Report status
+        if: always()
+        run: |
+          curl -sS -H "X-Admin-Token: ${{ secrets.CHIPA_ADMIN_TOKEN }}" \
+            "${{ secrets.CHIPA_API_URL }}/api/admin/status" || true
