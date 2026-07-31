@@ -17,13 +17,10 @@
 services:
   - type: web
     name: chipa-api
-    runtime: python
-    rootDir: backend
+    runtime: docker
     plan: free
-    buildCommand: |
-      apt-get update -qq && apt-get install -y -qq tesseract-ocr || true
-      pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
