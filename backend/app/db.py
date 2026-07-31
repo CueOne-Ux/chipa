@@ -38,6 +38,10 @@ async def init_pool() -> AsyncConnectionPool:
         min_size=1,
         max_size=8,
         open=False,
+        # Neon can close an idle SSL connection while Render remains awake.
+        # Validate each checkout so the pool replaces stale connections
+        # instead of handing the first scheduled sync a broken socket.
+        check=AsyncConnectionPool.check_connection,
         kwargs={"row_factory": dict_row},
     )
     await _pool.open(wait=True, timeout=30)
