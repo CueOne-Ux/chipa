@@ -207,7 +207,7 @@ async def candidate_products(query_core: str, limit: int) -> List[dict]:
     """
     async with pool().connection() as conn:
         await conn.execute(
-            "SELECT set_limit(%s);", (settings.trigram_threshold,)
+            "SELECT set_limit(CAST(%s AS real));", (settings.trigram_threshold,)
         )
         cur = await conn.execute(
             CANDIDATES_SQL,
@@ -230,7 +230,10 @@ LIMIT %(limit)s;
 
 async def link_candidates(core_text: str, exclude_store: str, limit: int = 60) -> List[dict]:
     async with pool().connection() as conn:
-        await conn.execute("SELECT set_limit(%s);", (settings.trigram_threshold,))
+        await conn.execute(
+            "SELECT set_limit(CAST(%s AS real));",
+            (settings.trigram_threshold,),
+        )
         cur = await conn.execute(
             CANDIDATES_BY_FACET_SQL,
             {
