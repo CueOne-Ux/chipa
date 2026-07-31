@@ -47,6 +47,12 @@ jobs:
             exit 1
           fi
 
+          feed_status=$(echo "$body" | jq -r '.feed.status // empty')
+          if [ "$feed_status" != "done" ]; then
+            echo "::error::Retailer feed did not complete (status: ${feed_status:-missing})"
+            exit 1
+          fi
+
       - name: Report status
         if: always()
         run: |

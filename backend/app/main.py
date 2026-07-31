@@ -159,6 +159,23 @@ async def _search_impl(
         rows = [r for r in rows if r["store_id"] in wanted]
 
     ranked = rank_search_results(q, rows, limit=limit)
+    result_source = "feed"
+
+    # The v1 cache was deliberately retained during the v2 migration. Read it
+    # only while the licensed feed has no matching rows, and label it honestly
+    # so an older cached price is never presented as current retailer data.
+    if not ranked:
+        try:
+            legacy_rows = await db.legacy_candidate_products(
+                core, settings.candidate_limit
+            )
+        except Exception as exc:  # v1 table may not exist on fresh installs
+            logger.warning("Legacy catalogue unavailable: %s", exc)
+            legacy_rows = []
+        if stores_filter:
+            legacy_rows = [r for r in legacy_rows if r["store_id"] in wanted]
+        ranked = rank_search_results(q, legacy_rows, limit=limit)
+        result_source = "legacy_cache"
 
     results = []
     for scored in ranked:
@@ -184,7 +201,12 @@ async def _search_impl(
                 "relevance": round(scored.score, 3),
                 "confidence": scored.confidence,
                 "notes": scored.reasons,
-                "source": "feed",
+                "source": result_source,
+                "price_updated_at": (
+                    row.get("updated_at").isoformat()
+                    if row.get("updated_at") and hasattr(row.get("updated_at"), "isoformat")
+                    else row.get("updated_at")
+                ),
             }
         )
 

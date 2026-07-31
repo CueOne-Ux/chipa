@@ -220,6 +220,49 @@ async def candidate_products(query_core: str, limit: int) -> List[dict]:
         return await cur.fetchall()
 
 
+LEGACY_CANDIDATES_SQL = """
+SELECT
+    product_id AS id,
+    CASE retailer_code
+      WHEN 'c' THEN 'checkers'
+      WHEN 'p' THEN 'pnp'
+      WHEN 'w' THEN 'woolworths'
+      ELSE LOWER(REGEXP_REPLACE(retailer, '[^a-zA-Z0-9]+', '', 'g'))
+    END AS store_id,
+    retailer AS store_name,
+    CASE retailer_code
+      WHEN 'c' THEN '#E4610F'
+      WHEN 'p' THEN '#0057B8'
+      WHEN 'w' THEN '#000000'
+      ELSE '#666666'
+    END AS store_colour,
+    name AS product_name,
+    name AS raw_product_name,
+    price,
+    original_price AS was_price,
+    (original_price IS NOT NULL AND price < original_price) AS on_promotion,
+    deal_text AS promotion_details,
+    image_url,
+    updated_at
+FROM products
+WHERE name ILIKE %(like)s
+   OR similarity(name, %(q)s) >= 0.25
+ORDER BY
+    CASE WHEN name ILIKE %(like)s THEN 0 ELSE 1 END,
+    similarity(name, %(q)s) DESC,
+    updated_at DESC
+LIMIT %(limit)s;
+"""
+
+
+async def legacy_candidate_products(query_core: str, limit: int) -> List[dict]:
+    """Read v1's retained cache when the licensed v2 feed has no matches."""
+    return await fetch_all(
+        LEGACY_CANDIDATES_SQL,
+        {"q": query_core, "like": f"%{query_core}%", "limit": limit},
+    )
+
+
 CANDIDATES_BY_FACET_SQL = """
 SELECT sp.*, s.name AS store_name, s.colour AS store_colour
 FROM store_products sp

@@ -107,6 +107,7 @@
   .pill.best{background:rgba(49,196,141,.14);color:var(--good)}
   .pill.promo{background:rgba(246,196,69,.14);color:var(--warn)}
   .pill.cat{background:rgba(139,107,255,.15);color:var(--catalog)}
+  .pill.cached{background:rgba(246,196,69,.14);color:var(--warn)}
   .pill.review{background:rgba(242,107,107,.13);color:var(--bad)}
 
   .storeline{display:flex;align-items:center;gap:7px;font-size:13.5px;font-weight:600}
@@ -542,7 +543,7 @@ function renderCompare(q, data, out){
     o.source==='catalog' || ACTIVE.size===0 || ACTIVE.has(o.store_id));
   if(!offers.length){
     out.innerHTML = `<div class="empty">Nothing found for &ldquo;${esc(q)}&rdquo;.<br>
-      Try being more specific. &ldquo;Full cream milk 2L&rdquo; beats &ldquo;milk&rdquo;.</div>`;
+      Try a brand, pack size, or a broader product name.</div>`;
     return;
   }
   const cheapest = offers[0];
@@ -564,6 +565,7 @@ function renderCompare(q, data, out){
       <div style="min-width:0">
         <div class="storeline">${esc(o.store_name)}
           ${o.source==='catalog'?'<span class="pill cat">catalogue</span>':''}
+          ${o.source==='legacy_cache'?'<span class="pill cached">cached price</span>':''}
           ${o.confidence==='review'?'<span class="pill review">check match</span>':''}
         </div>
         <div class="pmeta">${esc(o.product_name||'')}</div>
@@ -701,7 +703,8 @@ function renderBasketResult(data, out){
         <span class="dot" style="background:${esc(o.store_colour||'#666')}"></span>
         <div style="min-width:0">
           <div class="storeline">${esc(o.store_name)}
-            ${o.source==='catalog'?'<span class="pill cat">catalogue</span>':''}</div>
+            ${o.source==='catalog'?'<span class="pill cat">catalogue</span>':''}
+            ${o.source==='legacy_cache'?'<span class="pill cached">cached price</span>':''}</div>
           ${o.unit_price?`<div class="unit">${R(o.unit_price)} ${esc(o.unit_price_label||'')}</div>`:''}
         </div>
         <div class="right">

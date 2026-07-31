@@ -197,6 +197,39 @@ def test_search_store_filter(client):
     assert all(r["store_id"] == "checkers" for r in res.json()["results"])
 
 
+def test_search_uses_retained_catalogue_when_feed_has_no_match(client, monkeypatch):
+    async def no_feed_candidates(query_core: str, limit: int):
+        return []
+
+    async def retained_candidates(query_core: str, limit: int):
+        return [
+            {
+                "id": "water-1",
+                "store_id": "checkers",
+                "store_name": "Checkers",
+                "store_colour": "#E4610F",
+                "product_name": "Thirsti Natural Still Spring Water 500ml",
+                "raw_product_name": "Thirsti Natural Still Spring Water 500ml",
+                "price": 8.99,
+                "was_price": None,
+                "on_promotion": False,
+                "promotion_details": None,
+                "image_url": "https://example.test/water.webp",
+                "updated_at": "2026-07-30T10:00:00+00:00",
+            }
+        ]
+
+    monkeypatch.setattr(db_module, "candidate_products", no_feed_candidates)
+    monkeypatch.setattr(db_module, "legacy_candidate_products", retained_candidates)
+
+    res = client.get("/api/search", params={"q": "still water"})
+    assert res.status_code == 200
+    result = res.json()["results"][0]
+    assert result["product_name"] == "Thirsti Natural Still Spring Water 500ml"
+    assert result["source"] == "legacy_cache"
+    assert result["price_updated_at"] == "2026-07-30T10:00:00+00:00"
+
+
 def test_compare_returns_one_row_per_store_sorted_by_price(client):
     res = client.get("/api/compare", params={"q": "douglasdale full cream milk 2l"})
     assert res.status_code == 200
